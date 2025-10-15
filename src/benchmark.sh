@@ -20,7 +20,7 @@ M_list=(12 12 12 12)
 N_list=(11 12 13 16)
 K_list=(11 11 11 11)
 
-
+echo "M,  N,  K,  p0,    p1,    p2,    p3"
 for K in ${K_list[*]}
 do
 	LOOP_NUM=${#M_list[@]}

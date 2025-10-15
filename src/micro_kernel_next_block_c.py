@@ -1,6 +1,7 @@
 from global_config import *
 from micro_kernel_common import get_vector_C_idx
 from micro_kernel_common import get_last_simd_col
+from micro_kernel_common import get_simd_col
 
 def micro_kernel_next_block_c_get_addr(line, col,
                                        UNROLL_NR,
@@ -15,24 +16,26 @@ def micro_kernel_next_block_c_get_addr(line, col,
             logger.debug("进入了C矩阵x寄存器初始化...")
             code_str += "\"\\n\" // 进入了C矩阵x寄存器初始化...\n"
             for j in range(next_lines):
+                x_C_idx = RESERVED_REG_NUM + j
                 if j == 0:
-                    code_str += f"    \"mov     x{RESERVED_REG_NUM}, x13    \\n\" // 将x13(C矩阵头指针)存入x{RESERVED_REG_NUM}\n"
+                    code_str += f"    \"mov     x{x_C_idx}, {C_Head}    \\n\" // 将{C_Head}(C矩阵头指针)存入x{x_C_idx}\n"
                 elif j == 1:
-                    code_str += f"    \"add     x{RESERVED_REG_NUM + 1}, x13, x9     \\n\" // 将x13加上x9后存入x{RESERVED_REG_NUM + 1}\n"
+                    code_str += f"    \"add     x{x_C_idx}, {C_Head}, {LDC}     \\n\" // 将{C_Head}加上{LDC}后存入x{x_C_idx}\n"
                 else:
-                    code_str += f"    \"add     x{RESERVED_REG_NUM + j}, x{RESERVED_REG_NUM + j - 2}, x9, lsl #1    \\n\" // 将x{RESERVED_REG_NUM + j - 2}加上2倍的x9后存入x{RESERVED_REG_NUM + j}\n"
+                    code_str += f"    \"add     x{x_C_idx}, x{x_C_idx - 2}, {LDC}, lsl #1    \\n\" // 将x{x_C_idx - 2}加上2倍的{LDC}后存入x{x_C_idx}\n"
             logger.debug("进入了C矩阵x寄存器初始化...完成")
             code_str += "\"\\n\" // 进入了C矩阵x寄存器初始化...完成\n"
     else: # 有BIAS的话是每行都进行C寄存器的偏移
         logger.debug("进入了C矩阵x寄存器初始化...")
         code_str += "\"\\n\" // 进入了C矩阵x寄存器初始化...\n"
         if line < next_lines:
+            x_C_idx = RESERVED_REG_NUM + line
             if line == 0:
-                code_str += f"    \"mov     x{RESERVED_REG_NUM}, x13    \\n\"\n"
+                code_str += f"    \"mov     x{x_C_idx}, {C_Head}    \\n\"\n"
             elif line == 1:
-                code_str += f"    \"add     x{RESERVED_REG_NUM + 1}, x13, x9     \\n\"\n"
+                code_str += f"    \"add     x{x_C_idx}, {C_Head}, {LDC}     \\n\"\n"
             else:
-                code_str += f"    \"add     x{RESERVED_REG_NUM + line}, x{RESERVED_REG_NUM + line - 2}, x9, lsl #1    \\n\"\n"
+                code_str += f"    \"add     x{x_C_idx}, x{x_C_idx - 2}, {LDC}, lsl #1    \\n\"\n"
         logger.debug("进入了C矩阵x寄存器初始化...完成")
         code_str += "\"\\n\" // 进入了C矩阵x寄存器初始化...完成\n"
 
@@ -51,9 +54,11 @@ def micro_kernel_next_block_c_load_data(line, col,
     code_str += "\"\\n\" // 进入了C矩阵数据加载...\n"
     for j in range(UNROLL_NR):
         last_simd_col = get_last_simd_col(col, UNROLL_NR, j)
+        simd_col = get_simd_col(col, UNROLL_NR, j)
         if line < next_lines and last_simd_col < next_cols:
             vector_C_idx = get_vector_C_idx(line, col, UNROLL_NR, j, COLS)
-            code_str += f"    \"ldr     q{vector_C_idx}, [x{RESERVED_REG_NUM + line}, #{(col * UNROLL_NR + j) * 16}]           \\n\"\n"
+            x_C_idx = RESERVED_REG_NUM + line
+            code_str += f"    \"ldr     q{vector_C_idx}, [x{x_C_idx}, #{simd_col * SIMD_BYTES}]           \\n\"\n"
     logger.debug("进入了C矩阵数据加载...完成")
     code_str += "\"\\n\" // 进入了C矩阵数据加载...完成\n"
     return code_str

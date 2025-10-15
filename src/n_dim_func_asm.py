@@ -37,7 +37,7 @@ def n_dim_func_asm(
     vector_id_array_A = [i for i in range(VEC_REG_C_LEN + VEC_REG_B_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN + VEC_REG_A_LEN)]
     logger.debug(f"vector_id_array_A: {vector_id_array_A} (A矩阵的{VEC_REG_A_LEN}个寄存器的编号)")
 
-    register_scroll_B = [11, 12]
+    register_scroll_B = [B_Head_idx, B_Head2_idx]
 
     logger.debug(f"register_scroll_B: {register_scroll_B} (B矩阵的两个x寄存器，后面看到是在交叉地使用这两个寄存器进行B矩阵的数据加载)")
 
@@ -83,12 +83,12 @@ def n_dim_func_asm(
         if NR_LOOPS > 1 : # Cyclic N-dim main operation
             logger.debug(f"进入了NR_LOOPS循环...")
             code_str += "\"\\n\" // 进入了NR_LOOPS循环...\n"
-            code_str += f"    \"mov     x7, #{NR_LOOPS}                   \\n\" // 进入NR_LOOPS循环\n"
-            logger.debug(f"x7当中存了NR_LOOPS，并且在一次循环后会减1，这个就是N方向的主循环")
+            code_str += f"    \"mov     {NR_LOOPS_REG}, #{NR_LOOPS}                   \\n\" // 进入NR_LOOPS循环\n"
+            logger.debug(f"{NR_LOOPS_REG}当中存了NR_LOOPS，并且在一次循环后会减1，这个就是N方向的主循环")
             code_str += f"    \"b       6f                                 \\n\"\n"
             logger.debug(f"跳回到6处，6代表的是")
             code_str += f"  \"0:                                 \\n\"\n"
-            code_str += f"    \"subs    x7, x7, #1                            \\n\"\n"
+            code_str += f"    \"subs    {NR_LOOPS_REG}, {NR_LOOPS_REG}, #1                            \\n\"\n"
             code_str += f"    \"beq     7f                       \\n\"\n" 
             code_str += compile_time_for_n_dim_micro_kernel_pipeline_func_asm(
                 MR_MAIN, NR,

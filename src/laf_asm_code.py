@@ -34,13 +34,12 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
     code_str += "\"\\n\" // 进入了整个small_gemm的初始化...\n"
     code_str += f"    \"prfm    PLDL1KEEP, [%[A], #64]     \\n\" // A矩阵预取\n"
     code_str += f"    \"prfm    PLDL1KEEP, [%[B], #64]     \\n\" // B矩阵预取\n"
-    code_str += f"    \"lsl     x6, %[lda], #2             \\n\" // x6存储lda乘以FLOAT_BYTES，方便后面做偏移\n"
-    code_str += f"    \"lsl     x8, %[ldb], #3             \\n\" // x8存储ldb乘以FLOAT_BYTES再乘以2（魔鬼数2）\n"
-    code_str += f"    \"lsl     x9, %[ldc], #2             \\n\" // x9存储ldc乘以FLOAT_BYTES\n"
-    code_str += f"    \"mov     x10, %[A]                  \\n\" // x10存储A头指针\n"
-    code_str += f"    \"mov     x13, %[C]                  \\n\" // x13存储C头指针\n"
+    code_str += f"    \"lsl     {LDA}, %[lda], #2             \\n\" // {LDA}存储lda乘以FLOAT_BYTES，方便后面做偏移\n"
+    code_str += f"    \"lsl     {LDB}, %[ldb], #3             \\n\" // {LDB}存储ldb乘以FLOAT_BYTES再乘以2（魔鬼数2）\n"
+    code_str += f"    \"lsl     {LDC}, %[ldc], #2             \\n\" // {LDC}存储ldc乘以FLOAT_BYTES\n"
+    code_str += f"    \"mov     {A_Head}, %[A]                  \\n\" // {A_Head}存储A头指针\n"
+    code_str += f"    \"mov     {C_Head}, %[C]                  \\n\" // {C_Head}存储C头指针\n"
     code_str += "\"\\n\" // 进入了整个small_gemm的初始化...完成\n"
-
 
     if NR_MAIN_LOOPS : # 主循环，对B、C矩阵来说就是处理了SIMD_LANE * NR_MAIN * sizeof(float)的宽度
         code_str += "\"\\n\" // 进入了N方向主循环...\n"
@@ -58,10 +57,10 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
     if NR_REMAIN_LOOPS : # 剩余循环
         code_str += "\"\\n\" // 进入了N方向剩余循环...\n"
         if NR_MAIN_LOOPS: # 处理主循环和剩余循环之间的变化
-            code_str += f"    \"mov     x10, %[A]                 \\n\" // x10恢复为A头指针\n"
+            code_str += f"    \"mov     {A_Head}, %[A]                 \\n\" // {A_Head}恢复为A头指针\n"
             code_str += f"    \"add     %[B], %[B], #{SIMD_LANE * NR_MAIN * FLOAT_BYTES}                 \\n\" // # B指针跳到SIMD_LANE * NR_MAIN * FLOAT_BYTES的位置\n" 
             code_str += f"    \"add     %[C], %[C], #{SIMD_LANE * NR_MAIN * FLOAT_BYTES}                 \\n\" // # C指针跳到SIMD_LANE * NR_MAIN * FLOAT_BYTES的位置\n"
-            code_str += f"    \"mov     x13, %[C]                 \\n\"\n" # x13恢复为C头指针
+            code_str += f"    \"mov     {C_Head}, %[C]                 \\n\" // {C_Head}恢复为C头指针\n"
         code_str += n_dim_func_asm(
             N - SIMD_LANE * NR_MAIN * NR_MAIN_LOOPS, # 剩余循环所要处理的N
             K, UNROLL_K,
@@ -85,11 +84,10 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
     code_str += "  [ldc]\"r\"(ldc) \n"
     code_str += ": \"cc\", \"memory\"\n"
     code_str += "  "
-    for line in range(RESERVED_REG_NUM - 6 + 2 * max(NR_MAIN_MR_MAIN, NR_REMAIN_MR_MAIN)): # 使用到的x寄存器
-        code_str += f", \"x{6 + line}\""
-    code_str += f" // 目前尚不清楚x寄存器是如何计算的"
-    code_str += f"\n  "
-    for i in range(SIMD_REG_NUM): # 使用到了SIMD_REG_NUM个v寄存器
+    for line in range(RESERVED_REG_NUM - PASSING_REG_NUM + 2 * max(NR_MAIN_MR_MAIN, NR_REMAIN_MR_MAIN)): # 使用到的x寄存器
+        code_str += f", \"x{PASSING_REG_NUM + line}\""
+    code_str += f"\n"
+    for i in range(SIMD_REG_NUM):
         code_str += f", \"v{i}\""
     code_str +=  f"""
   );

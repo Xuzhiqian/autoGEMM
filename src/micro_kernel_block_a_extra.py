@@ -9,6 +9,7 @@ def micro_kernel_block_a_extra(is_A_odd,
     code_str = ""
     for line in range(next_lines):
         if is_A_odd and line < real_lines - VEC_REG_A_LEN % real_lines:
+            vector_A_idx = vector_scroll_A[0][line]
             x_A_idx = RESERVED_REG_NUM + LINES + line
-            code_str += f"    \"ldr     q{vector_scroll_A[0][line]}, [x{x_A_idx}], #{SIMD_BYTES}    \\n\"\n"
+            code_str += f"    \"ldr     q{vector_A_idx}, [x{x_A_idx}], #{SIMD_BYTES}    \\n\"\n"
     return code_str

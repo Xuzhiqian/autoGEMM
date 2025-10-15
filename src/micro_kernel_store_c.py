@@ -17,11 +17,12 @@ def micro_kernel_store_c(line, col,
                 actual_line = (line + VEC_REG_A_LEN % real_lines) % real_lines
             vector_C_idx = get_vector_C_idx(actual_line, col, UNROLL_NR, j, COLS)
             last_simd_col = get_last_simd_col(col, UNROLL_NR, j)
+            x_C_idx = RESERVED_REG_NUM + actual_line
             if last_simd_col + SIMD_LANE <= real_cols:
                 # 当前位置仍然在可以直接一整个SIMD寄存器存储的位置
-                code_str += f"    \"str     q{vector_C_idx}, [x{RESERVED_REG_NUM + actual_line}], #{SIMD_BYTES}           \\n\"\n"
+                code_str += f"    \"str     q{vector_C_idx}, [x{x_C_idx}], #{SIMD_BYTES}           \\n\"\n"
             else:
                 # 当前位置已经需要一个个FLOAT进行存储
                 for k in range(last_simd_col, real_cols):
-                    code_str += f"    \"st1     {{v{vector_C_idx}.s}}[{k % SIMD_LANE}], [x{RESERVED_REG_NUM + actual_line}], #{FLOAT_BYTES}           \\n\"\n"
+                    code_str += f"    \"st1     {{v{vector_C_idx}.s}}[{k % SIMD_LANE}], [x{x_C_idx}], #{FLOAT_BYTES}           \\n\"\n"
     return code_str

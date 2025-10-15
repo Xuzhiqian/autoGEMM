@@ -29,11 +29,13 @@ def micro_kernel_next_block_b(line, col,
             ):
                 continue
             # B矩阵的数据加载和x寄存器偏移是交叉的
-            code_str += f"    \"ldr     q{vector_id_array_B[vector_scroll_B[simd_col]]}, [x{register_scroll_B[B_odd_flag]}, #{(ptr_B_POS) * SIMD_BYTES}]             \\n\" // 将x{register_scroll_B[B_odd_flag]} + #{(ptr_B_POS) * SIMD_BYTES} Bytes处的数据加载到q{vector_id_array_B[vector_scroll_B[simd_col]]}当中\n"
+            vector_B_idx = vector_id_array_B[vector_scroll_B[simd_col]]
+            x_B_idx = register_scroll_B[B_odd_flag]
+            code_str += f"    \"ldr     q{vector_B_idx}, [x{x_B_idx}, #{(ptr_B_POS) * SIMD_BYTES}]             \\n\" // 将x{x_B_idx} + #{(ptr_B_POS) * SIMD_BYTES} Bytes处的数据加载到q{vector_B_idx}当中\n"
             # Get next B address
             if ptr_B_POS == COLS - 1: # last col
                 ptr_B_POS = 0
-                code_str += f"    \"add     x{register_scroll_B[B_odd_flag]}, x{register_scroll_B[B_odd_flag]}, x8              \\n\" // 将x{register_scroll_B[B_odd_flag]}加上x8后存入x{register_scroll_B[B_odd_flag]}\n"
+                code_str += f"    \"add     x{x_B_idx}, x{x_B_idx}, x8              \\n\" // 将x{x_B_idx}加上x8后存入x{x_B_idx}\n"
                 B_odd_flag ^= 1
             else:
                 ptr_B_POS += 1

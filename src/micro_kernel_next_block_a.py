@@ -10,12 +10,13 @@ def micro_kernel_next_block_a_get_addr(line, col,
         logger.debug("进入了A矩阵x寄存器初始化...")
         code_str += "\"\\n\" // 进入了A矩阵x寄存器初始化...\n"
         for j in range(next_lines):
+            x_A_idx = RESERVED_REG_NUM + LINES + j
             if j == 0:
-                code_str += f"    \"mov     x{RESERVED_REG_NUM+LINES}, x10    \\n\" // 将x10(A矩阵头指针)存入x{RESERVED_REG_NUM+LINES}\n"
+                code_str += f"    \"mov     x{x_A_idx}, {A_Head}    \\n\" // 将{A_Head}(A矩阵头指针)存入x{x_A_idx}\n"
             elif j == 1:
-                code_str += f"    \"add     x{RESERVED_REG_NUM+LINES+1}, x10, x6    \\n\" // 将x10加上x6后存入x{RESERVED_REG_NUM+LINES+1}\n"
+                code_str += f"    \"add     x{x_A_idx}, {A_Head}, {LDA}    \\n\" // 将{A_Head}加上{LDA}后存入x{x_A_idx}\n"
             else:
-                code_str += f"    \"add     x{RESERVED_REG_NUM+LINES+j}, x{RESERVED_REG_NUM+LINES+j-2}, x6, lsl #1    \\n\"// 将x{RESERVED_REG_NUM+LINES+j-2}加上2倍的x6后存入x{RESERVED_REG_NUM+LINES+j}\n"
+                code_str += f"    \"add     x{x_A_idx}, x{x_A_idx - 2}, {LDA}, lsl #1    \\n\"// 将x{x_A_idx - 2}加上2倍的{LDA}后存入x{x_A_idx}\n"
         logger.debug("进入了A矩阵x寄存器初始化...完成")
         code_str += "\"\\n\" // 进入了A矩阵x寄存器初始化...完成\n"
     return code_str
@@ -40,7 +41,9 @@ def micro_kernel_next_block_a_load_data(line, col,
     )):
         logger.debug("进入了A矩阵数据加载...")
         code_str += "\"\\n\" // 进入了A矩阵数据加载...\n"
-        if line == 0 and col == 0:
+        is_first_line = (line == 0)
+        is_first_col = (col == 0)
+        if is_first_line and is_first_col: # 第0行第0列
             for real_line in range(real_lines):
                 if ( # unknown constraints
                     mod_simd_lane_loop_id == real_line % 3 and
@@ -48,7 +51,8 @@ def micro_kernel_next_block_a_load_data(line, col,
                 ):
                     actual_line = (real_line + VEC_REG_A_LEN % real_lines) % real_lines if is_A_even else real_line
                     x_A_idx = RESERVED_REG_NUM + LINES + actual_line
-                    code_str += f"    \"ldr     q{vector_scroll_A[A_odd_flag^1][actual_line]}, [x{x_A_idx}], #{SIMD_BYTES}    \\n\"// 将x{x_A_idx}处的数据加载到q{vector_scroll_A[A_odd_flag^1][actual_line]}中，并使x{x_A_idx}偏移SIMD的长度\n"
+                    vector_A_idx = vector_scroll_A[A_odd_flag^1][actual_line]
+                    code_str += f"    \"ldr     q{vector_A_idx}, [x{x_A_idx}], #{SIMD_BYTES}    \\n\"// 将x{x_A_idx}处的数据加载到q{vector_A_idx}中，并使x{x_A_idx}偏移SIMD的长度\n"
         if ( # unknown constraints
             mod_simd_lane_loop_id == 3 and
             line < real_lines and
@@ -58,7 +62,8 @@ def micro_kernel_next_block_a_load_data(line, col,
         ):
             actual_line = (line + VEC_REG_A_LEN % real_lines) % real_lines if is_A_even else line
             x_A_idx = RESERVED_REG_NUM + LINES + actual_line
-            code_str += f"    \"ldr     q{vector_scroll_A[A_odd_flag^1][actual_line]}, [x{x_A_idx}], #{SIMD_BYTES}    \\n\" // 将x{x_A_idx}处的数据加载到q{vector_scroll_A[A_odd_flag^1][actual_line]}中，并使x{x_A_idx}偏移SIMD的长度\n"
+            vector_A_idx = vector_scroll_A[A_odd_flag^1][actual_line]
+            code_str += f"    \"ldr     q{vector_A_idx}, [x{x_A_idx}], #{SIMD_BYTES}    \\n\" // 将x{x_A_idx}处的数据加载到q{vector_A_idx}中，并使x{x_A_idx}偏移SIMD的长度\n"
         logger.debug("进入了A矩阵数据加载...完成")
         code_str += "\"\\n\" // 进入了A矩阵数据加载...完成\n"
         return code_str
@@ -76,7 +81,8 @@ def micro_kernel_next_block_a_load_data(line, col,
             )
         ):
             x_A_idx = RESERVED_REG_NUM + LINES + line
-            code_str += f"    \"ldr     q{vector_scroll_A[0][line]}, [x{x_A_idx}], #{SIMD_BYTES}    \\n\" // 将x{x_A_idx}处的数据加载到q{vector_scroll_A[0][line]}当中，并使x{x_A_idx}往后偏移SIMD的长度\n"
+            vector_A_idx = vector_scroll_A[0][line]
+            code_str += f"    \"ldr     q{vector_A_idx}, [x{x_A_idx}], #{SIMD_BYTES}    \\n\" // 将x{x_A_idx}处的数据加载到q{vector_A_idx}当中，并使x{x_A_idx}往后偏移SIMD的长度\n"
     logger.debug("进入了A矩阵数据加载...完成")
     code_str += "\"\\n\" // 进入了A矩阵数据加载...完成\n"
     return code_str

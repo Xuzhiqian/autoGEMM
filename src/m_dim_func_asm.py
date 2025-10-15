@@ -27,10 +27,10 @@ def m_dim_func_asm(
         code_str += "\"\\n\" // 进入了M方向的主循环...\n"
         if MR_MAIN_LOOPS > 1 : # Cyclic M-dim main operation
             logger.debug("进入了M方向的主循环的主要操作...")
-            code_str += f"    \"mov     x14, #{MR_MAIN_LOOPS}                   \\n\" // x14存储MR_MAIN_LOOPS的值\n"
+            code_str += f"    \"mov     {MR_MAIN_LOOPS_REG}, #{MR_MAIN_LOOPS}                   \\n\" // {MR_MAIN_LOOPS_REG}存储MR_MAIN_LOOPS的值\n"
             code_str += f"    \"b       1f                                      \\n\" // 跳到1\n"
             code_str += f"  \"2:                                 \\n\" // K方向的剩余操作\n"
-            code_str += f"    \"subs    x14, x14, #1                            \\n\"\n"
+            code_str += f"    \"subs    {MR_MAIN_LOOPS_REG}, {MR_MAIN_LOOPS_REG}, #1                            \\n\"\n"
             code_str += compile_time_for_loop_k_remain_func_asm(
                 MR_MAIN, NR,
                 K, UNROLL_K,
@@ -57,8 +57,8 @@ def m_dim_func_asm(
         # K-dim main operation
         if Main_K_loop_flag: 
             logger.debug("进入了K方向的主循环的主要操作...")
-            code_str += f"    \"mov     x15, #{Main_K_loop_times}                   \\n\" // x15存储K方向的循环次数Main_K_loop_times\n"
-            code_str += f"    \"subs    x15, x15, #1                            \\n\"\n"
+            code_str += f"    \"mov     {Main_K_loop_times_REG}, #{Main_K_loop_times}                   \\n\" // {Main_K_loop_times_REG}存储K方向的循环次数Main_K_loop_times\n"
+            code_str += f"    \"subs    {Main_K_loop_times_REG}, {Main_K_loop_times_REG}, #1                            \\n\"\n"
             code_str += compile_time_for_loop_k_begin_func_asm(
                 MR_MAIN, NR,
                 K, UNROLL_K,
@@ -83,7 +83,7 @@ def m_dim_func_asm(
                 code_str += f"    \"beq     2b                       \\n\" // 等于0的话跳到2\n"
             else:
                 code_str += f"    \"beq     3f                       \\n\" // 等于0的话跳到3\n"
-            code_str += f"    \"subs    x15, x15, #1                            \\n\" // Main_K_loop_times -= 1\n"
+            code_str += f"    \"subs    {Main_K_loop_times_REG}, {Main_K_loop_times_REG}, #1                            \\n\" // Main_K_loop_times -= 1\n"
             code_str += f"    \"b       5b                                 \\n\" // 跳转到5\n"
             logger.debug("进入了K方向的主循环的主要操作...完成")
         else:
@@ -133,10 +133,10 @@ def m_dim_func_asm(
                 with_bias
             )
         if MR_REMAIN_LOOPS > 1:
-            code_str += f"    \"mov     x14, #{MR_REMAIN_LOOPS}                   \\n\"\n"
+            code_str += f"    \"mov     {MR_MAIN_LOOPS_REG}, #{MR_REMAIN_LOOPS}                   \\n\"\n"
             code_str += f"    \"b       1f                                 \\n\"\n"
             code_str += f"  \"2:                                 \\n\"\n"
-            code_str += f"    \"subs    x14, x14, #1                            \\n\"\n"
+            code_str += f"    \"subs    {MR_MAIN_LOOPS_REG}, {MR_MAIN_LOOPS_REG}, #1                            \\n\"\n"
             code_str += compile_time_for_loop_k_remain_func_asm(
                 MR_MAIN, NR,
                 K, UNROLL_K,
@@ -161,10 +161,17 @@ def m_dim_func_asm(
 
         # K-dim main operation
         if Main_K_loop_flag: 
-            code_str += f"    \"mov     x15, #{Main_K_loop_times}                   \\n\"\n"
-            code_str += f"    \"subs    x15, x15, #1                            \\n\"\n"
+            code_str += f"    \"mov     {Main_K_loop_times_REG}, #{Main_K_loop_times}                   \\n\"\n"
+            code_str += f"    \"subs    {Main_K_loop_times_REG}, {Main_K_loop_times_REG}, #1                            \\n\"\n"
             code_str += compile_time_for_loop_k_begin_func_asm(
-                MR_MAIN, NR, K, UNROLL_K, MR_REMAIN, real_cols, vector_id_array_A, VEC_REG_A_LEN, vector_id_array_B, VEC_REG_B_LEN, register_scroll_B, with_bias)
+                MR_MAIN, NR,
+                K, UNROLL_K,
+                MR_REMAIN, real_cols,
+                vector_id_array_A, VEC_REG_A_LEN,
+                vector_id_array_B, VEC_REG_B_LEN,
+                register_scroll_B,
+                with_bias
+            )
             code_str += f"    \"b       4f                                 \\n\"\n"
             code_str += f"  \"5:                                 \\n\"\n"
             code_str += compile_time_for_loop_k_main_body_func_asm(
@@ -180,7 +187,7 @@ def m_dim_func_asm(
                 code_str += f"    \"beq     2b                       \\n\"\n"
             else:
                 code_str += f"    \"beq     3f                       \\n\"\n"
-            code_str += f"    \"subs    x15, x15, #1                            \\n\"\n"
+            code_str += f"    \"subs    {Main_K_loop_times_REG}, {Main_K_loop_times_REG}, #1                            \\n\"\n"
             code_str += f"    \"b       5b                                 \\n\"\n"
         else:
             code_str += compile_time_for_loop_k_begin_func_asm(
