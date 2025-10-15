@@ -854,6 +854,8 @@ int main() {{
     //printf("1------passed\\n");
   }}
 
+"""
+    cc_code += f"""
   free(A);
   A=NULL;
   free(B);

@@ -82,6 +82,7 @@ def micro_kernel_loop_asm(
     for i in range(LINES * (COLS // UNROLL_NR)):
         line = i % LINES # 当前行
         col = i // LINES # 当前列
+        is_last_line = (line == LINES - 1)
 
         if FMA_CALCULATE_FLAG:
             code_str += micro_kernel_main_computing(line, col,
@@ -111,14 +112,12 @@ def micro_kernel_loop_asm(
         if LOOP_K_END_FLAG and is_last_k: # K方向终止条件
             continue
 
-        # Update the pointer of the next block of A/B/C
-        code_str += micro_kernel_next_block_c(line, col,
-                                              UNROLL_NR,
-                                              is_last_k,
-                                              LINES, COLS,
-                                              next_lines, next_cols,
-                                              REG_BLOCK_TRANS_FLAG,
-                                              WITH_BIAS_FLAG)
+        if REG_BLOCK_TRANS_FLAG and is_last_k: # 只有启用REG_BLOCK_TRANS_FLAG及最后一个K时才需要进行C矩阵的x寄存器的偏移
+            code_str += micro_kernel_next_block_c(line, col,
+                                                UNROLL_NR,
+                                                LINES, COLS,
+                                                next_lines, next_cols,
+                                                WITH_BIAS_FLAG)
 
         code_str += micro_kernel_next_block_a(line, col,
                                               UNROLL_NR,
@@ -134,35 +133,33 @@ def micro_kernel_loop_asm(
                                               REG_BLOCK_TRANS_FLAG,
                                               WITH_BIAS_FLAG)
 
-        code_str_b, ptr_B_POS = micro_kernel_next_block_b(line, col,
-                                                          UNROLL_NR,
-                                                          vector_id_array_B, VEC_REG_B_LEN,
-                                                          vector_scroll_B,
-                                                          register_scroll_B,
-                                                          B_odd_flag,
-                                                          ptr_B_POS,
-                                                          is_last_k,
-                                                          LOOP_ID, LAST_K_ID,
-                                                          LINES, COLS,
-                                                          real_lines, real_cols)
-        code_str += code_str_b
+        if is_last_line:
+            code_str_b, ptr_B_POS = micro_kernel_next_block_b(line, col,
+                                                            UNROLL_NR,
+                                                            vector_id_array_B, VEC_REG_B_LEN,
+                                                            vector_scroll_B,
+                                                            register_scroll_B,
+                                                            B_odd_flag,
+                                                            ptr_B_POS,
+                                                            is_last_k,
+                                                            LOOP_ID, LAST_K_ID,
+                                                            LINES, COLS,
+                                                            real_lines, real_cols)
+            code_str += code_str_b
 
-    code_str += micro_kernel_block_a_extra(A_odd_flag,
-                                           is_last_k,
-                                           VEC_REG_A_LEN,
-                                           vector_scroll_A,
-                                           LINES, COLS,
-                                           real_lines, real_cols,
-                                           next_lines, next_cols,
-                                           REG_BLOCK_TRANS_FLAG,
-                                           WITH_BIAS_FLAG)
+    if REG_BLOCK_TRANS_FLAG and is_last_k and WITH_BIAS_FLAG:
+        code_str += micro_kernel_block_a_extra(is_A_odd,
+                                               VEC_REG_A_LEN,
+                                               vector_scroll_A,
+                                               LINES, COLS,
+                                               real_lines, real_cols,
+                                               next_lines, next_cols)
 
-    code_str += micro_kernel_block_b_extra(is_last_k,
-                                           vector_id_array_B, VEC_REG_B_LEN,
-                                           vector_scroll_B,
-                                           register_scroll_B,
-                                           B_odd_flag,
-                                           LINES, COLS,
-                                           REG_BLOCK_TRANS_FLAG)
+    if REG_BLOCK_TRANS_FLAG and is_last_k and (not COLS == VEC_REG_B_LEN): # unknown constraints
+        code_str += micro_kernel_block_b_extra(vector_id_array_B, VEC_REG_B_LEN,
+                                               vector_scroll_B,
+                                               register_scroll_B,
+                                               B_odd_flag,
+                                               LINES, COLS)
 
     return code_str

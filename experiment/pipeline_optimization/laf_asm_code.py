@@ -50,7 +50,8 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
             NR_MAIN, NR_MAIN_LOOPS,
             NR_MAIN_MR_MAIN, NR_MAIN_MR_MAIN_LOOPS,
             NR_MAIN_MR_REMAIN, NR_MAIN_MR_REMAIN_LOOPS,
-            with_bias, pipeline_strategy_level
+            with_bias,
+            pipeline_strategy_level
         )
         code_str += "\"\\n\" // 进入了N方向主循环...完成\n"
 
@@ -67,7 +68,8 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
             NR_REMAIN, NR_REMAIN_LOOPS,
             NR_REMAIN_MR_MAIN, NR_REMAIN_MR_MAIN_LOOPS,
             NR_REMAIN_MR_REMAIN, NR_REMAIN_MR_REMAIN_LOOPS,
-            with_bias, pipeline_strategy_level
+            with_bias,
+            pipeline_strategy_level
         )
         code_str += "\"\\n\" // 进入了N方向剩余循环...完成\n"
 

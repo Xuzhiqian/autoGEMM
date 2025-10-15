@@ -13,7 +13,19 @@ def get_vector_C_idx(line, col,
                      COLS):
     return line * COLS + col * UNROLL_NR + j
 
+def get_simd_col(col,
+                 UNROLL_NR,
+                 j):
+    return col * UNROLL_NR + j
+
 def get_last_simd_col(col,
                       UNROLL_NR,
                       j):
     return SIMD_LANE * (col * UNROLL_NR + j)
+
+def prefetch_C_data(real_lines):
+    code_str = ""
+    for line in range(real_lines):
+        x_C_idx = RESERVED_REG_NUM + line
+        code_str += f"    \"prfm    PSTL1KEEP, [x{x_C_idx}, #64]              \\n\" // 从x{x_C_idx}预取C矩阵数据\n"
+    return code_str

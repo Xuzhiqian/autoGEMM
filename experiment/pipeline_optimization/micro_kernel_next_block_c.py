@@ -20,7 +20,7 @@ def micro_kernel_next_block_c_get_addr(line, col,
                 elif j == 1:
                     code_str += f"    \"add     x{RESERVED_REG_NUM + 1}, x13, x9     \\n\" // 将x13加上x9后存入x{RESERVED_REG_NUM + 1}\n"
                 else:
-                    code_str += f"    \"add     x{RESERVED_REG_NUM + j}, x{RESERVED_REG_NUM + j - 2}, x9, lsl #1    \\n\" // 将x{RESERVED_REG_NUM + j-2}加上2倍的x9后存入x{RESERVED_REG_NUM + j}\n"
+                    code_str += f"    \"add     x{RESERVED_REG_NUM + j}, x{RESERVED_REG_NUM + j - 2}, x9, lsl #1    \\n\" // 将x{RESERVED_REG_NUM + j - 2}加上2倍的x9后存入x{RESERVED_REG_NUM + j}\n"
             logger.debug("进入了C矩阵x寄存器初始化...完成")
             code_str += "\"\\n\" // 进入了C矩阵x寄存器初始化...完成\n"
     else: # 有BIAS的话是每行都进行C寄存器的偏移
@@ -60,24 +60,21 @@ def micro_kernel_next_block_c_load_data(line, col,
 
 def micro_kernel_next_block_c(line, col,
                               UNROLL_NR,
-                              is_last_k,
                               LINES, COLS,
                               next_lines, next_cols,
-                              REG_BLOCK_TRANS_FLAG,
                               WITH_BIAS_FLAG):
 
     code_str = ""
-    if REG_BLOCK_TRANS_FLAG and is_last_k: # 只有启用REG_BLOCK_TRANS_FLAG及最后一个K时才需要进行C矩阵的x寄存器的偏移
-        code_str += micro_kernel_next_block_c_get_addr(line, col,
+    code_str += micro_kernel_next_block_c_get_addr(line, col,
+                                                   UNROLL_NR,
+                                                   LINES, COLS,
+                                                   next_lines, next_cols,
+                                                   WITH_BIAS_FLAG)
+
+    code_str += micro_kernel_next_block_c_load_data(line, col,
                                                     UNROLL_NR,
                                                     LINES, COLS,
                                                     next_lines, next_cols,
                                                     WITH_BIAS_FLAG)
-
-        code_str += micro_kernel_next_block_c_load_data(line, col,
-                                                        UNROLL_NR,
-                                                        LINES, COLS,
-                                                        next_lines, next_cols,
-                                                        WITH_BIAS_FLAG)
 
     return code_str

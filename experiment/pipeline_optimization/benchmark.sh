@@ -12,9 +12,14 @@ TOT_REPEAT=65536000000
 # N_list=(16 64 16 64)
 # K_list=( 4 16 64 256)
 
-M_list=(12)
-N_list=(13)
-K_list=(11)
+# M_list=(2 2 2  2  2  2  2)
+# N_list=(4 8 12 16 20 24 28)
+# K_list=(8 8 8  8  8  8  8)
+
+M_list=(12 12 12 12)
+N_list=(11 12 13 16)
+K_list=(11 11 11 11)
+
 
 for K in ${K_list[*]}
 do
@@ -57,9 +62,9 @@ do
 		make -s
 		./benchmark_kernel
 
-		# python make_c_file_asm_pipeline_expreiment.py $M $N $K $UNROLL $NR $REPEAT 2
-		# make -s
-		# ./benchmark_kernel
+		python make_c_file_asm_pipeline_expreiment.py $M $N $K $UNROLL $NR $REPEAT 2
+		make -s
+		./benchmark_kernel
 
 		python make_c_file_asm_pipeline_expreiment.py $M $N $K $UNROLL $NR $REPEAT 3
 		make -s

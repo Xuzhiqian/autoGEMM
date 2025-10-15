@@ -10,4 +10,5 @@ RESERVED_REG_NUM = 16
 SIMD_REG_NUM = 32
 
 import time
+logger.remove()
 logger.add(f'data/log/{time.strftime("%Y%m%d%H", time.localtime())}.log')

@@ -10,35 +10,31 @@ def n_dim_func_asm(
   NR, NR_LOOPS,
   MR_MAIN, MR_MAIN_LOOPS,
   MR_REMAIN, MR_REMAIN_LOOPS,
-  with_bias, pipeline_strategy_level
+  with_bias,
+  pipeline_strategy_level
 ):
     logger.debug(f"进入N方向的函数生成")
-  
+
     VEC_REG_B_LEN = NR if K <= 16 else max(4, NR) # 确定B矩阵所需的向量寄存器的数量
     if NR == 6:
         VEC_REG_B_LEN = NR if K <= 32 else 8
-
     logger.debug(f"VEC_REG_B_LEN: {VEC_REG_B_LEN} (正常情况下就是NR={NR}, K过大或者NR有特殊值时有特殊设置)")
 
     logger.debug(f"MR_MAIN: {MR_MAIN}")
     logger.debug(f"NR: {NR}")
-    vector_id_array_B = []
-    for i in range(MR_MAIN * NR, MR_MAIN * NR + VEC_REG_B_LEN): # 从MR_MAIN * NR开始分配VEC_REG_B_LEN个寄存器，但是实际不知道为什么从MR_MAIN * NR开始
-        vector_id_array_B.append(i)
+    VEC_REG_C_LEN = MR_MAIN * NR
 
+    vector_id_array_B = [i for i in range(VEC_REG_C_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN)]
     logger.debug(f"vector_id_array_B: {vector_id_array_B} (B矩阵的{VEC_REG_B_LEN}个寄存器的编号)")
 
     if pipeline_strategy_level < 1: 
         VEC_REG_A_LEN = MR_MAIN
     else:
-        VEC_REG_A_LEN = MR_MAIN if K <= 16 else min(32 - MR_MAIN * NR - VEC_REG_B_LEN, 2 * MR_MAIN)
-
+        REMAIN_REG_FOR_A = SIMD_REG_NUM - VEC_REG_C_LEN - VEC_REG_B_LEN
+        VEC_REG_A_LEN = MR_MAIN if K <= 16 else min(REMAIN_REG_FOR_A, 2 * MR_MAIN)
     logger.debug(f"VEC_REG_A_LEN: {VEC_REG_A_LEN} (正常情况下就是MR_MAIN={MR_MAIN}， K过大时有特殊设置)")
 
-    vector_id_array_A = []
-    for i in range(MR_MAIN * NR + VEC_REG_B_LEN, MR_MAIN * NR + VEC_REG_B_LEN + VEC_REG_A_LEN): # 接在B矩阵向量寄存器的末尾
-        vector_id_array_A.append(i)
-
+    vector_id_array_A = [i for i in range(VEC_REG_C_LEN + VEC_REG_B_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN + VEC_REG_A_LEN)]
     logger.debug(f"vector_id_array_A: {vector_id_array_A} (A矩阵的{VEC_REG_A_LEN}个寄存器的编号)")
 
     register_scroll_B = [11, 12]

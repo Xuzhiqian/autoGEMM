@@ -476,7 +476,7 @@ def n_dim_func_asm(REMAIN_N, K, UNROLL_K, NR, NR_LOOPS, MR_MAIN, MR_MAIN_LOOPS, 
     VEC_REG_B_LEN = NR if K <= 16 else max(4, NR)
     if NR == 6 :
       VEC_REG_B_LEN = NR if K <= 32 else 8
-    
+
     VEC_REG_A_LEN = MR_MAIN if K <= 16 else min(32 - MR_MAIN*NR - VEC_REG_B_LEN, min(2*MR_MAIN, 8))
 
     vector_id_array_A = []
@@ -783,6 +783,7 @@ int main() {{
   }} else {{
     //printf("0------passed\\n");
   }}
+
   for (int i = 0; i < M; ++i) {{
     for (int j = 0; j < N; ++j) {{
       float c = 10.0f * rand() / RAND_MAX;
