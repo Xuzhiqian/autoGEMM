@@ -10,11 +10,20 @@ def compile_time_for_loop_k_begin_AC_addr_init(real_lines):
         is_odd_lines = (tmp_lines % 2 != 0)
         if is_odd_lines: # 如果tmp_lines是偶数，这里将一直进不去，直到出现第一个奇数
             if cnt == 0: # first time
-                code_str += f"    \"add     {A_Head}, {A_Head}, {LDA}               \\n\" // A矩阵头指针加上{LDA}(lda*FLOAT_BYTES)\n"
-                code_str += f"    \"add     {C_Head}, {C_Head}, {LDC}               \\n\" // C矩阵头指针加上{LDC}(ldc*FLOAT_BYTES)\n"
+                if SIMD == "NEON":
+                    code_str += f"    \"add     {A_Head}, {A_Head}, {LDA}               \\n\" // A矩阵头指针加上{LDA}(lda*FLOAT_BYTES)\n"
+                    code_str += f"    \"add     {C_Head}, {C_Head}, {LDC}               \\n\" // C矩阵头指针加上{LDC}(ldc*FLOAT_BYTES)\n"
+                if SIMD == "SVE":
+                    code_str += f"    \"add     {A_Head}, {A_Head}, %[lda]               \\n\" // A矩阵头指针加上{LDA}(lda*FLOAT_BYTES)\n"
+                    code_str += f"    \"add     {C_Head}, {C_Head}, %[ldc]               \\n\" // C矩阵头指针加上{LDC}(ldc*FLOAT_BYTES)\n"
             else: # other times
-                code_str += f"    \"add     {A_Head}, {A_Head}, {LDA}, lsl #{cnt}               \\n\" // A矩阵头指针加上{LDA}*2^{cnt}倍\n"
-                code_str += f"    \"add     {C_Head}, {C_Head}, {LDC}, lsl #{cnt}               \\n\" // C矩阵头指针加上{LDC}*2^{cnt}倍\n"
+                if SIMD == "NEON":
+                    code_str += f"    \"add     {A_Head}, {A_Head}, {LDA}, lsl #{cnt}               \\n\" // A矩阵头指针加上{LDA}*2^{cnt}倍\n"
+                    code_str += f"    \"add     {C_Head}, {C_Head}, {LDC}, lsl #{cnt}               \\n\" // C矩阵头指针加上{LDC}*2^{cnt}倍\n"
+                if SIMD == "SVE":
+                    code_str += f"    \"add     {A_Head}, {A_Head}, %[lda], lsl #{cnt}               \\n\" // A矩阵头指针加上{LDA}*2^{cnt}倍\n"
+                    code_str += f"    \"add     {C_Head}, {C_Head}, %[ldc], lsl #{cnt}               \\n\" // C矩阵头指针加上{LDC}*2^{cnt}倍\n"
+
         tmp_lines = tmp_lines // 2 # 如果tmp_lines是偶数
         cnt += 1
     return code_str

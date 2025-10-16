@@ -5,7 +5,9 @@ tmp=`dirname $0`
 PROJECT_ROOT=`cd $tmp; pwd`
 cd ${PROJECT_ROOT}
 
-UNROLL=8
+# UNROLL=4 # double
+UNROLL=8 # float
+# UNROLL=16
 TOT_REPEAT=65536000000
 
 # M_list=( 5  5 80 80)
@@ -19,6 +21,10 @@ TOT_REPEAT=65536000000
 M_list=(12 12 12 12)
 N_list=(11 12 13 16)
 K_list=(11 11 11 11)
+
+# M_list=(12)
+# N_list=(13)
+# K_list=(11)
 
 echo "M,  N,  K,  p0,    p1,    p2,    p3"
 for K in ${K_list[*]}

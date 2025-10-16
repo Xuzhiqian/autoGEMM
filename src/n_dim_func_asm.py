@@ -4,6 +4,36 @@ from compile_time_for_init_func_asm import compile_time_for_init_func_asm
 from compile_time_for_loop_k_end_func_asm import compile_time_for_loop_k_end_func_asm
 from compile_time_for_n_dim_micro_kernel_pipeline_func_asm import compile_time_for_n_dim_micro_kernel_pipeline_func_asm
 
+def get_vec_reg_C_len(
+    MR_MAIN,
+    NR
+):
+    return MR_MAIN * NR
+
+def get_vec_reg_B_len(
+    NR,
+    K
+):
+    VEC_REG_B_LEN = NR if K <= 16 else max(4, NR) # 确定B矩阵所需的向量寄存器的数量
+    if NR == 6:
+        VEC_REG_B_LEN = NR if K <= 32 else 8
+    logger.debug(f"VEC_REG_B_LEN: {VEC_REG_B_LEN} (正常情况下就是NR={NR}, K过大或者NR有特殊值时有特殊设置)")
+    return VEC_REG_B_LEN
+
+def get_vec_reg_A_len(
+    MR_MAIN,
+    K,
+    VEC_REG_B_LEN,
+    VEC_REG_C_LEN,
+    pipeline_strategy_level
+):
+    VEC_REG_A_LEN = MR_MAIN
+    if pipeline_strategy_level >= 1:
+        REMAIN_REG_FOR_A = SIMD_REG_NUM - VEC_REG_C_LEN - VEC_REG_B_LEN
+        VEC_REG_A_LEN = MR_MAIN if K <= 16 else min(REMAIN_REG_FOR_A, 2 * MR_MAIN)
+    logger.debug(f"VEC_REG_A_LEN: {VEC_REG_A_LEN} (正常情况下就是MR_MAIN={MR_MAIN}， K过大时有特殊设置)")
+    return VEC_REG_A_LEN
+
 def n_dim_func_asm(
   REMAIN_N,
   K, UNROLL_K,
@@ -14,28 +44,19 @@ def n_dim_func_asm(
   pipeline_strategy_level
 ):
     logger.debug(f"进入N方向的函数生成")
-
-    VEC_REG_B_LEN = NR if K <= 16 else max(4, NR) # 确定B矩阵所需的向量寄存器的数量
-    if NR == 6:
-        VEC_REG_B_LEN = NR if K <= 32 else 8
-    logger.debug(f"VEC_REG_B_LEN: {VEC_REG_B_LEN} (正常情况下就是NR={NR}, K过大或者NR有特殊值时有特殊设置)")
-
     logger.debug(f"MR_MAIN: {MR_MAIN}")
     logger.debug(f"NR: {NR}")
-    VEC_REG_C_LEN = MR_MAIN * NR
-
-    vector_id_array_B = [i for i in range(VEC_REG_C_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN)]
-    logger.debug(f"vector_id_array_B: {vector_id_array_B} (B矩阵的{VEC_REG_B_LEN}个寄存器的编号)")
-
-    if pipeline_strategy_level < 1: 
-        VEC_REG_A_LEN = MR_MAIN
-    else:
-        REMAIN_REG_FOR_A = SIMD_REG_NUM - VEC_REG_C_LEN - VEC_REG_B_LEN
-        VEC_REG_A_LEN = MR_MAIN if K <= 16 else min(REMAIN_REG_FOR_A, 2 * MR_MAIN)
-    logger.debug(f"VEC_REG_A_LEN: {VEC_REG_A_LEN} (正常情况下就是MR_MAIN={MR_MAIN}， K过大时有特殊设置)")
+    VEC_REG_B_LEN = get_vec_reg_B_len(NR, K)
+    VEC_REG_C_LEN = get_vec_reg_C_len(MR_MAIN, NR)
+    VEC_REG_A_LEN = get_vec_reg_A_len(MR_MAIN, K, VEC_REG_B_LEN, VEC_REG_C_LEN, pipeline_strategy_level)
 
     vector_id_array_A = [i for i in range(VEC_REG_C_LEN + VEC_REG_B_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN + VEC_REG_A_LEN)]
+    vector_id_array_B = [i for i in range(VEC_REG_C_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN)]
+    if SIMD == "SVE":
+        vector_id_array_A = [i for i in range(VEC_REG_A_LEN)]
+        vector_id_array_B = [i for i in range(VEC_REG_A_LEN, VEC_REG_A_LEN + VEC_REG_B_LEN)]
     logger.debug(f"vector_id_array_A: {vector_id_array_A} (A矩阵的{VEC_REG_A_LEN}个寄存器的编号)")
+    logger.debug(f"vector_id_array_B: {vector_id_array_B} (B矩阵的{VEC_REG_B_LEN}个寄存器的编号)")
 
     register_scroll_B = [B_Head_idx, B_Head2_idx]
 
@@ -46,7 +67,8 @@ def n_dim_func_asm(
     Edge_N = REMAIN_N % (SIMD_LANE * NR) # 重新计算出N - SIMD_LANE * NR_MAIN * NR_MAIN_LOOPS
     if Edge_N_flag:
         NR_LOOPS -= 1 # 由于NR_LOOPS = NR_REMAIN_LOOPS = 1，所以这里被赋值为0，这句貌似是一句废代码，因为Edge_N_flag分支当中根本不用到NR_LOOPS
-
+    if SIMD == "SVE":
+        Main_N_flag = 0 if NR_LOOPS == 0 else 1
     # Main_N_flag和Edge_N_flag是否是互斥关系，即Edge_N_flag必为!Main_N_flag ?
 
     lines_branch_1 = MR_MAIN if MR_MAIN_LOOPS else MR_REMAIN
@@ -68,6 +90,10 @@ def n_dim_func_asm(
     # compile_time_for_loop_k_end_func_asm
     
     code_str = f""
+    if SIMD == "SVE":
+        code_str += f"    \"ptrue     p0.{VEC_SIGN}                  \\n\"\n"
+        code_str += f"    \"mov       x28, #{SIMD_LANE if REMAIN_N % SIMD_LANE == 0 else REMAIN_N % SIMD_LANE}                  \\n\"\n"
+        code_str += f"    \"whilelt   p1.{VEC_SIGN}, xzr, x28                  \\n\"\n"
     code_str += compile_time_for_init_func_asm(
         MR_MAIN, NR, 
         lines_branch_1, cols_branch_1,

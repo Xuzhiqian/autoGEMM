@@ -1,21 +1,21 @@
-from global_config import SIMD_LANE
+from global_config import *
 
 def UNROLL_LOOP_ID(K, UNROLL_K):
     BEGIN_LOOP_ID = 1
     EDGE_BEGIN_LOOP_ID = 1
-    # # 原始代码
-    # if K % UNROLL_K > SIMD_LANE: # 如果K不是UNROLL_K的整数倍，并且剩下的K方向的数量要比SIMD_LANE大
-    #     EDGE_BEGIN_LOOP_ID = (K % UNROLL_K) - (K % SIMD_LANE) # 计算边界开始循环的位置
-    # elif K % UNROLL_K == 0 and UNROLL_K > SIMD_LANE: # 如果K是UNROLL_K的整数倍，并且UNROLL_K比SIMD_LANE要大
-    #     EDGE_BEGIN_LOOP_ID = UNROLL_K - SIMD_LANE
+    # 原始代码
+    if K % UNROLL_K > UNROLL_LANE: # 如果K不是UNROLL_K的整数倍，并且剩下的K方向的数量要比SIMD_LANE大
+        EDGE_BEGIN_LOOP_ID = (K % UNROLL_K) - (K % UNROLL_LANE) # 计算边界开始循环的位置
+    elif K % UNROLL_K == 0 and UNROLL_K > UNROLL_LANE: # 如果K是UNROLL_K的整数倍，并且UNROLL_K比SIMD_LANE要大
+        EDGE_BEGIN_LOOP_ID = UNROLL_K - UNROLL_LANE
     
-    # 新代码
-    if UNROLL_K <= SIMD_LANE:
-        EDGE_BEGIN_LOOP_ID = 1
-        return BEGIN_LOOP_ID, EDGE_BEGIN_LOOP_ID
+    # # 新代码
+    # if UNROLL_K <= SIMD_LANE:
+    #     EDGE_BEGIN_LOOP_ID = 1
+    #     return BEGIN_LOOP_ID, EDGE_BEGIN_LOOP_ID
 
-    if K % UNROLL_K >= SIMD_LANE:
-        EDGE_BEGIN_LOOP_ID = UNROLL_K - SIMD_LANE
+    # if K % UNROLL_K >= SIMD_LANE:
+    #     EDGE_BEGIN_LOOP_ID = UNROLL_K - SIMD_LANE
 
     return BEGIN_LOOP_ID, EDGE_BEGIN_LOOP_ID
 
@@ -47,4 +47,3 @@ def UNROLL_LOOP_ID(K, UNROLL_K):
     # 注意到BEGIN_LOOP_ID恒等于1
     # 从上面可以观察到
     # 当K可以被UNROLL_K整除时，EDGE_BEGIN_LOOP_ID就是UNROLL_K - SIMD_LANE
-    return BEGIN_LOOP_ID, EDGE_BEGIN_LOOP_ID # 主循环和剩余循环的起始ID

@@ -10,7 +10,10 @@ def micro_kernel_x_registers_init(REG_BLOCK_TRANS_FLAG, real_cols):
         code_str += f"    \"add     %[C], %[C], #{real_cols * FLOAT_BYTES}                 \\n\"\n"
         code_str += f"    \"mov     {C_Head}, %[C]                 \\n\"\n"
     code_str += f"    \"mov     {B_Head}, %[B]                   \\n\" // x11存储B头指针\n"
-    code_str += f"    \"add     {B_Head2}, %[B], %[ldb], lsl #2               \\n\" // x12存储B + FLOAT_BYTES * ldb\n"
+    if SIMD == "NEON":
+        code_str += f"    \"add     {B_Head2}, %[B], %[ldb], lsl #{LEFT_OFFSET}               \\n\" // x12存储B + FLOAT_BYTES * ldb\n"
+    if SIMD == "SVE":
+        code_str += f"    \"add     {B_Head2}, %[B], %[ldb], lsr #1               \\n\" // x12存储B + FLOAT_BYTES * ldb\n" # ???
     code_str += f"    \"prfm    PLDL1KEEP, [{B_Head}, #64]              \\n\" // B矩阵预取\n"
     code_str += f"    \"prfm    PLDL1KEEP, [{B_Head2}, #64]              \\n\" // B矩阵预取\n"
     logger.debug("进入了x寄存器初始化阶段...完成")

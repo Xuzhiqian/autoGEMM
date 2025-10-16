@@ -16,11 +16,10 @@ def m_dim_func_asm(
     with_bias,
     pipeline_strategy_level
 ):
+    code_str = ""
 
     Main_K_loop_flag = (K > UNROLL_K) # K > UNROLL_K进行loop
     Main_K_loop_times = (K + UNROLL_K - 1) // UNROLL_K # K除以UNROLL_K向上取整
-
-    code_str = f""
 
     if MR_MAIN_LOOPS: # Enter the M-dim main operation
         logger.debug("进入了M方向的主循环...")
@@ -130,7 +129,8 @@ def m_dim_func_asm(
                 vector_id_array_A, VEC_REG_A_LEN,
                 vector_id_array_B, VEC_REG_B_LEN,
                 register_scroll_B,
-                with_bias
+                with_bias,
+                pipeline_strategy_level
             )
         if MR_REMAIN_LOOPS > 1:
             code_str += f"    \"mov     {MR_MAIN_LOOPS_REG}, #{MR_REMAIN_LOOPS}                   \\n\"\n"

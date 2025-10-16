@@ -20,24 +20,24 @@ def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, uniq_id, repeat, pipeline_strategy_l
 #include "timer.h"
 
 namespace laf {{
-void small_gemm(const float *A, const float *B, float *C, const int lda, const int ldb, const int ldc) {{
+void small_gemm(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, int lda, int ldb, int ldc) {{
 """
     cc_code += laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level=pipeline_strategy_level, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN, with_bias = 0)
     cc_code += f"""
 }}
-void small_gemm_with_bias(const float *A, const float *B, float *C, const int lda, const int ldb, const int ldc) {{
+void small_gemm_with_bias(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, int lda, int ldb, int ldc) {{
 """
     cc_code += laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level=pipeline_strategy_level, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN, with_bias = 1)
     cc_code += f"""
 }}
 }}
 
-extern "C" int gemm_{M}x{K}x{N}_{lda}_{ldb}_{ldc}_xsmm_{uniq_id}(const float *A, const float *B, float *C, const int lda, const int ldb, const int ldc){{
+extern "C" int gemm_{M}x{K}x{N}_{lda}_{ldb}_{ldc}_xsmm_{uniq_id}(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, const int lda, const int ldb, const int ldc){{
   laf::small_gemm(A, B, C, lda, ldb, ldc);
   return 0;
 }}
 
-extern "C" int gemm_{M}x{K}x{N}_{lda}_{ldb}_{ldc}_xsmm_with_bias_{uniq_id}(const float *A, const float *B, float *C, const int lda, const int ldb, const int ldc){{
+extern "C" int gemm_{M}x{K}x{N}_{lda}_{ldb}_{ldc}_xsmm_with_bias_{uniq_id}(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, const int lda, const int ldb, const int ldc){{
   laf::small_gemm_with_bias(A, B, C, lda, ldb, ldc);
   return 0;
 }}
@@ -62,11 +62,11 @@ int main() {{
   #define ldb {ldb}
   #define ldc {ldc}
 
-  float *A = static_cast<float*>(_mm_malloc(64, M * lda * sizeof(float)));
-  float *B = static_cast<float*>(_mm_malloc(64, K * ldb * sizeof(float)));
-  float *C = static_cast<float*>(_mm_malloc(64, M * ldc * sizeof(float)));
-  float *refC = static_cast<float*>(_mm_malloc(64, M * ldc * sizeof(float)));
-  float *ourC = static_cast<float*>(_mm_malloc(64, M * ldc * sizeof(float)));
+  {DATA_TYPE} *A = static_cast<{DATA_TYPE}*>(_mm_malloc(64, M * lda * sizeof({DATA_TYPE})));
+  {DATA_TYPE} *B = static_cast<{DATA_TYPE}*>(_mm_malloc(64, K * ldb * sizeof({DATA_TYPE})));
+  {DATA_TYPE} *C = static_cast<{DATA_TYPE}*>(_mm_malloc(64, M * ldc * sizeof({DATA_TYPE})));
+  {DATA_TYPE} *refC = static_cast<{DATA_TYPE}*>(_mm_malloc(64, M * ldc * sizeof({DATA_TYPE})));
+  {DATA_TYPE} *ourC = static_cast<{DATA_TYPE}*>(_mm_malloc(64, M * ldc * sizeof({DATA_TYPE})));
 
   test_utils::init(A, M * lda);
   test_utils::init(B, K * ldb);
@@ -91,16 +91,17 @@ int main() {{
   bool ACC = false;
   test_utils::gemm_ref(A, B, refC, M, N, K, lda, ldb, ldc, ACC);
   laf::small_gemm(A, B, ourC, lda, ldb, ldc);
-  if (!test_utils::is_same_matrix(refC, ourC, M, N, ldc, 1e-5, 1e-5)) {{
-    int idx = test_utils::diff_index(refC, ourC, M, N, ldc, 1e-5, 1e-5);
+  if (!test_utils::is_same_matrix(refC, ourC, M, N, ldc, {TOL}, {TOL})) {{
+    int idx = test_utils::diff_index(refC, ourC, M, N, ldc, {TOL}, {TOL});
     printf("ERROR: M=%d, N=%d, K=%d, lda=%d, ldb=%d, ldc=%d, ACC=%d, ref[%d]=%.6f, our[%d]=%.6f\\n",
            M, N, K, lda, ldb, ldc, ACC, idx, refC[idx], idx, ourC[idx]);
+    test_utils::print_diff(refC, ourC, M, N, ldc);
   }} else {{
     //printf("0------passed\\n");
   }}
   for (int i = 0; i < M; ++i) {{
     for (int j = 0; j < N; ++j) {{
-      float c = 10.0f * rand() / RAND_MAX;
+      {DATA_TYPE} c = 10.0f * rand() / RAND_MAX;
       refC[i * ldc + j] = c;
       ourC[i * ldc + j] = c;
     }}
@@ -108,10 +109,11 @@ int main() {{
   ACC = true;
   test_utils::gemm_ref(A, B, refC, M, N, K, lda, ldb, ldc, ACC);
   laf::small_gemm_with_bias(A, B, ourC, lda, ldb, ldc);
-  if (!test_utils::is_same_matrix(refC, ourC, M, N, ldc, 1e-5, 1e-5)) {{
-    int idx = test_utils::diff_index(refC, ourC, M, N, ldc, 1e-5, 1e-5);
+  if (!test_utils::is_same_matrix(refC, ourC, M, N, ldc, {TOL}, {TOL})) {{
+    int idx = test_utils::diff_index(refC, ourC, M, N, ldc, {TOL}, {TOL});
     printf("ERROR: M=%d, N=%d, K=%d, lda=%d, ldb=%d, ldc=%d, ACC=%d, ref[%d]=%.6f, our[%d]=%.6f\\n",
            M, N, K, lda, ldb, ldc, ACC, idx, refC[idx], idx, ourC[idx]);
+    test_utils::print_diff(refC, ourC, M, N, ldc);
   }} else {{
     //printf("1------passed\\n");
   }}

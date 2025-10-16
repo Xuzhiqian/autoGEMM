@@ -6,7 +6,8 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
     # UNROLL_K是有默认值8的，刚好就是SIMD_LANE * 2
     # NR_MAIN默认值是4，初步认为其含义是N方向的一个块的长度需要多少个SIMD寄存器，例如这里4的话，说明N方向的大小是128*4bits
     # with_bias含义比较明显，就是考虑beta不等于0
-    assert (UNROLL_K % (2 * SIMD_LANE) == 0) # UNROLL_K必须是2倍SIMD_LANE的整数倍
+    assert (UNROLL_K % (2 * UNROLL_LANE) == 0) # UNROLL_K必须是2倍UNROLL_LANE的整数倍
+    assert (UNROLL_K >= 4)
     assert (NR_MAIN == 3 or NR_MAIN == 4 or NR_MAIN == 5) # NR_MAIN限定是3、4、5中的值
 
     logger.debug(f"M: {M}, N: {N}, K: {K}")
@@ -34,9 +35,14 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
     code_str += "\"\\n\" // 进入了整个small_gemm的初始化...\n"
     code_str += f"    \"prfm    PLDL1KEEP, [%[A], #64]     \\n\" // A矩阵预取\n"
     code_str += f"    \"prfm    PLDL1KEEP, [%[B], #64]     \\n\" // B矩阵预取\n"
-    code_str += f"    \"lsl     {LDA}, %[lda], #2             \\n\" // {LDA}存储lda乘以FLOAT_BYTES，方便后面做偏移\n"
-    code_str += f"    \"lsl     {LDB}, %[ldb], #3             \\n\" // {LDB}存储ldb乘以FLOAT_BYTES再乘以2（魔鬼数2）\n"
-    code_str += f"    \"lsl     {LDC}, %[ldc], #2             \\n\" // {LDC}存储ldc乘以FLOAT_BYTES\n"
+    if SIMD == "NEON":
+        code_str += f"    \"lsl     {LDA}, %[lda], #{LEFT_OFFSET}             \\n\" // {LDA}存储lda乘以FLOAT_BYTES，方便后面做偏移\n"
+        code_str += f"    \"lsl     {LDB}, %[ldb], #{LEFT_OFFSET + 1}             \\n\" // {LDB}存储ldb乘以FLOAT_BYTES再乘以2（跳两行）\n"
+        code_str += f"    \"lsl     {LDC}, %[ldc], #{LEFT_OFFSET}             \\n\" // {LDC}存储ldc乘以FLOAT_BYTES\n"
+    if SIMD == "SVE":
+        code_str += f"    \"lsl     %[lda], %[lda], #{LEFT_OFFSET}             \\n\" // {LDA}存储lda乘以FLOAT_BYTES，方便后面做偏移\n"
+        code_str += f"    \"lsl     %[ldb], %[ldb], #{LEFT_OFFSET + 1}             \\n\" // {LDB}存储ldb乘以FLOAT_BYTES再乘以2（跳两行）\n"
+        code_str += f"    \"lsl     %[ldc], %[ldc], #{LEFT_OFFSET}             \\n\" // {LDC}存储ldc乘以FLOAT_BYTES\n"
     code_str += f"    \"mov     {A_Head}, %[A]                  \\n\" // {A_Head}存储A头指针\n"
     code_str += f"    \"mov     {C_Head}, %[C]                  \\n\" // {C_Head}存储C头指针\n"
     code_str += "\"\\n\" // 进入了整个small_gemm的初始化...完成\n"
@@ -75,20 +81,30 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
     code_str += ""
     code_str += ": [A]\"=r\"(A),\n"
     code_str += "  [B]\"=r\"(B),\n"
-    code_str += "  [C]\"=r\"(C) \n"
+    code_str += "  [C]\"=r\"(C),\n"
+    code_str += "  [lda]\"=r\"(lda),\n"
+    code_str += "  [ldb]\"=r\"(ldb),\n"
+    code_str += "  [ldc]\"=r\"(ldc) \n"
     code_str += ": \"0\"(A),\n"
     code_str += "  \"1\"(B),\n"
     code_str += "  \"2\"(C),\n"
-    code_str += "  [lda]\"r\"(lda),\n"
-    code_str += "  [ldb]\"r\"(ldb),\n"
-    code_str += "  [ldc]\"r\"(ldc) \n"
+    code_str += "  \"3\"(lda),\n"
+    code_str += "  \"4\"(ldb),\n"
+    code_str += "  \"5\"(ldc) \n"
+    # code_str += "  [lda]\"r\"(lda),\n"
+    # code_str += "  [ldb]\"r\"(ldb),\n"
+    # code_str += "  [ldc]\"r\"(ldc) \n"
     code_str += ": \"cc\", \"memory\"\n"
     code_str += "  "
-    for line in range(RESERVED_REG_NUM - PASSING_REG_NUM + 2 * max(NR_MAIN_MR_MAIN, NR_REMAIN_MR_MAIN)): # 使用到的x寄存器
-        code_str += f", \"x{PASSING_REG_NUM + line}\""
+    # for i in range(PASSING_REG_NUM, RESERVED_REG_NUM + 2 * max(NR_MAIN_MR_MAIN, NR_REMAIN_MR_MAIN)): # 使用到的x寄存器
+    for i in range(PASSING_REG_NUM, 29):
+        code_str += f", \"x{i}\""
     code_str += f"\n"
     for i in range(SIMD_REG_NUM):
-        code_str += f", \"v{i}\""
+        if SIMD == "NEON":
+            code_str += f", \"v{i}\""
+        if SIMD == "SVE":
+            code_str += f", \"z{i}\""
     code_str +=  f"""
   );
 """

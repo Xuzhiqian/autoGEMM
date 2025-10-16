@@ -1,4 +1,3 @@
-from global_config import RESERVED_REG_NUM
 from unroll_loop_id import UNROLL_LOOP_ID
 from micro_kernel_loop_asm import micro_kernel_loop_asm
 from micro_kernel_common import prefetch_C_data

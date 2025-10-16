@@ -50,13 +50,13 @@ def micro_kernel_loop_asm(
     # 
     UNROLL_NR = micro_kernel_unroll_nr_init(is_last_k, COLS, WITH_BIAS_FLAG)
 
-    A_k_loop_id_simd = LOOP_ID // SIMD_LANE
+    A_k_loop_id_simd = LOOP_ID // UNROLL_LANE
     A_odd_flag = A_k_loop_id_simd % 2
     is_A_odd = (A_odd_flag == 1) # 在A矩阵K方向上是奇数，注意如果LOOP_ID = -1时该值也为True
     is_A_even = (A_odd_flag == 0)
     B_odd_flag = ((LOOP_ID * COLS + VEC_REG_B_LEN) // COLS) % 2
     ptr_B_POS = (LOOP_ID * COLS + VEC_REG_B_LEN) % COLS 
-    mod_simd_lane_loop_id = LOOP_ID % SIMD_LANE
+    mod_simd_lane_loop_id = LOOP_ID % UNROLL_LANE
 
     vector_scroll_A = [[], []]
     vector_scroll_A[0] = [vector_id_array_A[i] for i in range(LINES)] # 按照顺序取A的SIMD寄存器
@@ -88,7 +88,7 @@ def micro_kernel_loop_asm(
             code_str += micro_kernel_main_computing(line, col,
                                                     UNROLL_NR,
                                                     vector_id_array_A, VEC_REG_A_LEN,
-                                                    vector_id_array_B,
+                                                    vector_id_array_B, VEC_REG_B_LEN,
                                                     vector_scroll_A,
                                                     vector_scroll_B,
                                                     A_odd_flag,
@@ -102,22 +102,25 @@ def micro_kernel_loop_asm(
 
         if STORE_C_FLAG and is_last_k:
             code_str += micro_kernel_store_c(line, col,
-                                            UNROLL_NR,
-                                            vector_id_array_A, VEC_REG_A_LEN,
-                                            is_A_odd,
-                                            LINES, COLS,
-                                            real_lines, real_cols,
-                                            WITH_BIAS_FLAG)
+                                             UNROLL_NR,
+                                             vector_id_array_A, VEC_REG_A_LEN,
+                                             VEC_REG_B_LEN,
+                                             is_A_odd,
+                                             LINES, COLS,
+                                             real_lines, real_cols,
+                                             WITH_BIAS_FLAG)
 
         if LOOP_K_END_FLAG and is_last_k: # K方向终止条件
             continue
 
         if REG_BLOCK_TRANS_FLAG and is_last_k: # 只有启用REG_BLOCK_TRANS_FLAG及最后一个K时才需要进行C矩阵的x寄存器的偏移
             code_str += micro_kernel_next_block_c(line, col,
-                                                UNROLL_NR,
-                                                LINES, COLS,
-                                                next_lines, next_cols,
-                                                WITH_BIAS_FLAG)
+                                                  UNROLL_NR,
+                                                  LINES, COLS,
+                                                  VEC_REG_A_LEN,
+                                                  VEC_REG_B_LEN,
+                                                  next_lines, next_cols,
+                                                  WITH_BIAS_FLAG)
 
         code_str += micro_kernel_next_block_a(line, col,
                                               UNROLL_NR,
@@ -134,17 +137,17 @@ def micro_kernel_loop_asm(
                                               WITH_BIAS_FLAG)
 
         if is_last_line:
-            code_str_b, ptr_B_POS = micro_kernel_next_block_b(line, col,
-                                                            UNROLL_NR,
-                                                            vector_id_array_B, VEC_REG_B_LEN,
-                                                            vector_scroll_B,
-                                                            register_scroll_B,
-                                                            B_odd_flag,
-                                                            ptr_B_POS,
-                                                            is_last_k,
-                                                            LOOP_ID, LAST_K_ID,
-                                                            LINES, COLS,
-                                                            real_lines, real_cols)
+            code_str_b, ptr_B_POS, B_odd_flag = micro_kernel_next_block_b(line, col,
+                                                                          UNROLL_NR,
+                                                                          vector_id_array_B, VEC_REG_B_LEN,
+                                                                          vector_scroll_B,
+                                                                          register_scroll_B,
+                                                                          B_odd_flag,
+                                                                          ptr_B_POS,
+                                                                          is_last_k,
+                                                                          LOOP_ID, LAST_K_ID,
+                                                                          LINES, COLS,
+                                                                          real_lines, real_cols)
             code_str += code_str_b
 
     if REG_BLOCK_TRANS_FLAG and is_last_k and WITH_BIAS_FLAG:
