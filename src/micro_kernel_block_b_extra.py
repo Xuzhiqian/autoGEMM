@@ -24,4 +24,4 @@ def micro_kernel_block_b_extra(vector_id_array_B, VEC_REG_B_LEN,
             B_odd_flag ^= 1
         else:
             ptr_B_POS += 1 
-    return code_str
+    return code_str, ptr_B_POS, B_odd_flag

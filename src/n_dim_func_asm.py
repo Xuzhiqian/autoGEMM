@@ -34,6 +34,25 @@ def get_vec_reg_A_len(
     logger.debug(f"VEC_REG_A_LEN: {VEC_REG_A_LEN} (正常情况下就是MR_MAIN={MR_MAIN}， K过大时有特殊设置)")
     return VEC_REG_A_LEN
 
+def get_vector_id_array_A(VEC_REG_C_LEN, VEC_REG_B_LEN, VEC_REG_A_LEN):
+    vector_id_array_A = [i for i in range(VEC_REG_C_LEN + VEC_REG_B_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN + VEC_REG_A_LEN)]
+    if SIMD == "SVE":
+        vector_id_array_A = [i for i in range(VEC_REG_A_LEN)]
+    logger.debug(f"vector_id_array_A: {vector_id_array_A} (A矩阵的{VEC_REG_A_LEN}个寄存器的编号)")
+    return vector_id_array_A
+
+def get_vector_id_array_B(VEC_REG_C_LEN, VEC_REG_B_LEN, VEC_REG_A_LEN):
+    vector_id_array_B = [i for i in range(VEC_REG_C_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN)]
+    if SIMD == "SVE":
+        vector_id_array_B = [i for i in range(VEC_REG_A_LEN, VEC_REG_A_LEN + VEC_REG_B_LEN)]
+    logger.debug(f"vector_id_array_B: {vector_id_array_B} (B矩阵的{VEC_REG_B_LEN}个寄存器的编号)")
+    return vector_id_array_B
+
+def get_register_scroll_B():
+    register_scroll_B = [B_Head_idx, B_Head2_idx]
+    logger.debug(f"register_scroll_B: {register_scroll_B} (B矩阵的两个x寄存器，后面看到是在交叉地使用这两个寄存器进行B矩阵的数据加载)")
+    return register_scroll_B
+
 def n_dim_func_asm(
   REMAIN_N,
   K, UNROLL_K,
@@ -43,24 +62,16 @@ def n_dim_func_asm(
   with_bias,
   pipeline_strategy_level
 ):
-    logger.debug(f"进入N方向的函数生成")
+    logger.debug(f"进入N方向的函数生成...")
     logger.debug(f"MR_MAIN: {MR_MAIN}")
     logger.debug(f"NR: {NR}")
     VEC_REG_B_LEN = get_vec_reg_B_len(NR, K)
     VEC_REG_C_LEN = get_vec_reg_C_len(MR_MAIN, NR)
     VEC_REG_A_LEN = get_vec_reg_A_len(MR_MAIN, K, VEC_REG_B_LEN, VEC_REG_C_LEN, pipeline_strategy_level)
 
-    vector_id_array_A = [i for i in range(VEC_REG_C_LEN + VEC_REG_B_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN + VEC_REG_A_LEN)]
-    vector_id_array_B = [i for i in range(VEC_REG_C_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN)]
-    if SIMD == "SVE":
-        vector_id_array_A = [i for i in range(VEC_REG_A_LEN)]
-        vector_id_array_B = [i for i in range(VEC_REG_A_LEN, VEC_REG_A_LEN + VEC_REG_B_LEN)]
-    logger.debug(f"vector_id_array_A: {vector_id_array_A} (A矩阵的{VEC_REG_A_LEN}个寄存器的编号)")
-    logger.debug(f"vector_id_array_B: {vector_id_array_B} (B矩阵的{VEC_REG_B_LEN}个寄存器的编号)")
-
-    register_scroll_B = [B_Head_idx, B_Head2_idx]
-
-    logger.debug(f"register_scroll_B: {register_scroll_B} (B矩阵的两个x寄存器，后面看到是在交叉地使用这两个寄存器进行B矩阵的数据加载)")
+    vector_id_array_A = get_vector_id_array_A(VEC_REG_C_LEN, VEC_REG_B_LEN, VEC_REG_A_LEN)
+    vector_id_array_B = get_vector_id_array_B(VEC_REG_C_LEN, VEC_REG_B_LEN, VEC_REG_A_LEN)
+    register_scroll_B = get_register_scroll_B()
 
     Main_N_flag = (NR_LOOPS > 1) or (SIMD_LANE * NR == REMAIN_N) # NR_LOOPS > 1说明是N方向的NR_MAIN_LOOPS, NR_REMAIN_LOOPS最大就是1；NR_MAIN_LOOPS = 1时SIMD_LANE * NR_MAIN = min(N, SIMD_LANE * NR_MAIN * NR_MAIN_LOOPS); 而NR_REMAIN_LOOPS = 1时是下面的这种关系，即SIMD_LANE * NR_REMAIN > N - SIMD_LANE * NR_MAIN * NR_MAIN_LOOPS
     Edge_N_flag = SIMD_LANE * NR * NR_LOOPS > REMAIN_N

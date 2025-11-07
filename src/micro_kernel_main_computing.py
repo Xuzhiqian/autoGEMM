@@ -58,7 +58,7 @@ def micro_kernel_main_computing(line, col,
             if SIMD == "NEON":
                 code_str += f"    \"fmla    v{vector_C_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_B_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_A_idx}.{VEC_SIGN}[{mod_simd_lane_loop_id}]             \\n\"\n"
             if SIMD == "SVE":
-                vector_C_idx = VEC_REG_A_LEN + VEC_REG_B_LEN + get_vector_C_idx(line, col, UNROLL_NR, j, COLS)
+                vector_C_idx = VEC_REG_A_LEN + VEC_REG_B_LEN + get_vector_C_idx(actual_line, col, UNROLL_NR, j, COLS)
                 if last_simd_col + SIMD_LANE <= real_cols:
                     code_str += f"    \"fmla    z{vector_C_idx}.{VEC_SIGN}, p0/m, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
                 else:

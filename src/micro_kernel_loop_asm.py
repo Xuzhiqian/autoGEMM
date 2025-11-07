@@ -159,10 +159,11 @@ def micro_kernel_loop_asm(
                                                next_lines, next_cols)
 
     if REG_BLOCK_TRANS_FLAG and is_last_k and (not COLS == VEC_REG_B_LEN): # unknown constraints
-        code_str += micro_kernel_block_b_extra(vector_id_array_B, VEC_REG_B_LEN,
-                                               vector_scroll_B,
-                                               register_scroll_B,
-                                               B_odd_flag,
-                                               LINES, COLS)
+        code_str_b, ptr_B_POS, B_odd_flag = micro_kernel_block_b_extra(vector_id_array_B, VEC_REG_B_LEN,
+                                                                       vector_scroll_B,
+                                                                       register_scroll_B,
+                                                                       B_odd_flag,
+                                                                       LINES, COLS)
+        code_str += code_str_b
 
     return code_str
