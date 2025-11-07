@@ -105,7 +105,8 @@ def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, unroll_k, nr_main, MRSA_FLAG, instru
     if re.search(r"neon", instruction) :
         from template.gen_asm_code.gen_xsmm_asm_armv8_neon_code import xsmm_asm_armv8_code
     elif re.search(r"sve", instruction) :
-        from template.gen_asm_code.gen_xsmm_asm_armv8_sve_code import xsmm_asm_armv8_code
+        # from template.gen_asm_code.gen_xsmm_asm_armv8_sve_code import xsmm_asm_armv8_code
+        from src.gen_xsmm_asm_armv8_sve_code import xsmm_asm_armv8_code
 
     # Create c source code
     cc_code = xsmm_asm_armv8_code(M, K, N, lda, ldb, ldc, unroll_k, nr_main, MRSA_FLAG, uniq_id)

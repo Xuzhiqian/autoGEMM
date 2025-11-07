@@ -2,18 +2,20 @@ from global_config import *
 from block_param import RBSA
 from n_dim_func_asm import n_dim_func_asm
 
-def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, NR_MAIN = 4, with_bias = 0):
+def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, NR_MAIN = 4, MRSA_FLAG = 1, with_bias = 0):
     # UNROLL_K是有默认值8的，刚好就是SIMD_LANE * 2
     # NR_MAIN默认值是4，初步认为其含义是N方向的一个块的长度需要多少个SIMD寄存器，例如这里4的话，说明N方向的大小是128*4bits
     # with_bias含义比较明显，就是考虑beta不等于0
+    logger.debug(f"UNROLL_K: {UNROLL_K}")
+    logger.debug(f"UNROLL_LANE: {UNROLL_LANE}")
     assert (UNROLL_K % (2 * UNROLL_LANE) == 0) # UNROLL_K必须是2倍UNROLL_LANE的整数倍
     assert (UNROLL_K >= 4)
     assert (NR_MAIN == 3 or NR_MAIN == 4 or NR_MAIN == 5) # NR_MAIN限定是3、4、5中的值
 
     logger.debug(f"M: {M}, N: {N}, K: {K}")
-    logger.debug(f"UNROLL_K: {UNROLL_K}, NR_MAIN: {NR_MAIN}, with_bias: {with_bias}")
+    logger.debug(f"UNROLL_K: {UNROLL_K}, NR_MAIN: {NR_MAIN}, MRSA_FLAG: {MRSA_FLAG}, with_bias: {with_bias}")
     logger.debug(f"调用RBSA进行分块参数的计算...")
-    NR_MAIN_LOOPS, NR_REMAIN, NR_REMAIN_LOOPS, NR_MAIN_MR_MAIN, NR_MAIN_MR_MAIN_LOOPS, NR_MAIN_MR_REMAIN, NR_MAIN_MR_REMAIN_LOOPS, NR_REMAIN_MR_MAIN, NR_REMAIN_MR_MAIN_LOOPS, NR_REMAIN_MR_REMAIN, NR_REMAIN_MR_REMAIN_LOOPS = RBSA(M, N, NR_MAIN) # 拆解出各个小块参数的逻辑（参见论文中的Fig5的d图）
+    NR_MAIN_LOOPS, NR_REMAIN, NR_REMAIN_LOOPS, NR_MAIN_MR_MAIN, NR_MAIN_MR_MAIN_LOOPS, NR_MAIN_MR_REMAIN, NR_MAIN_MR_REMAIN_LOOPS, NR_REMAIN_MR_MAIN, NR_REMAIN_MR_MAIN_LOOPS, NR_REMAIN_MR_REMAIN, NR_REMAIN_MR_REMAIN_LOOPS = RBSA(M, N, NR_MAIN, MRSA_FLAG) # 拆解出各个小块参数的逻辑（参见论文中的Fig5的d图）
     logger.debug(f"调用RBSA进行分块参数的计算...完毕")
 
     logger.debug(f"NR_MAIN_LOOPS: {NR_MAIN_LOOPS} (N方向是否要进行主循环)")

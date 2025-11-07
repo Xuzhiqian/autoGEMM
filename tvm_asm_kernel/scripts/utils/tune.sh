@@ -5,7 +5,7 @@ tmp=`dirname $0`
 PROJECT_ROOT=`cd $tmp/../..; pwd`
 cd ${PROJECT_ROOT}
 
-export PYTHONPATH=$PYTHONPATH:$PWD/python
+export PYTHONPATH=$PYTHONPATH:$PWD/python:$PWD/..:$PWD/../src
 export TVM_CC=clang++
 
 tune_output_path="tune_output"
