@@ -12,6 +12,10 @@
 import random
 import string
 import sys
+from loguru import logger
+import time
+logger.remove()
+logger.add(f'../data/log/{time.strftime("%Y%m%d%H", time.localtime())}.log')
 
 M = int(sys.argv[1])
 N = int(sys.argv[2])
@@ -102,6 +106,8 @@ def micro_kernel_loop_asm(LOOP_ID, LAST_K_ID, LINES, COLS, real_lines, real_cols
 
       if not WITH_BIAS_FLAG:
         # Get next block C address
+        logger.debug("进入了micro_kernel_next_block_c_get_addr...")
+        code_str += "\"\\n\" // 进入了micro_kernel_next_block_c_get_addr...\n"
         if (REG_BLOCK_TRANS_FLAG and LOOP_ID == LAST_K_ID and line == LINES - 1 and col == COLS//UNROLL_NR - 1):
           for j in range(next_lines):
             if (j == 0):
@@ -110,6 +116,8 @@ def micro_kernel_loop_asm(LOOP_ID, LAST_K_ID, LINES, COLS, real_lines, real_cols
               code_str += f"    \"add     x{RESERVED_REG_NUM+1}, x13, x9     \\n\"\n"
             else:
               code_str += f"    \"add     x{RESERVED_REG_NUM+j}, x{RESERVED_REG_NUM+j-2}, x9, lsl #1    \\n\"\n"
+        logger.debug("进入了micro_kernel_next_block_c_get_addr...完成")
+        code_str += "\"\\n\" // 进入了micro_kernel_next_block_c_get_addr...完成\n"
       else:
         # Get next block C address
         if (REG_BLOCK_TRANS_FLAG and LOOP_ID == LAST_K_ID):
@@ -128,6 +136,8 @@ def micro_kernel_loop_asm(LOOP_ID, LAST_K_ID, LINES, COLS, real_lines, real_cols
 
       # Get next block A address
       if (REG_BLOCK_TRANS_FLAG and LOOP_ID == LAST_K_ID and line == 0 and col == 0):
+        logger.debug(f"next_lines = {next_lines}")
+        code_str += f"\"\\n\" // next_lines = {next_lines}\n"
         for j in range(next_lines):
           if (j == 0):
             code_str += f"    \"mov     x{RESERVED_REG_NUM+LINES}, x10    \\n\"\n"
@@ -343,10 +353,22 @@ def compile_time_for_n_dim_micro_kernel_pipeline_func_asm(LINES, COLS, K, UNROLL
     code_str = f""
 
     if Pipeline_strategy_level < 3: 
+      logger.debug(f"进入了pipeline<3的NR_LOOPS循环...")
+      code_str += "\"\\n\" // 进入了pipeline<3的NR_LOOPS循环...\n"
+      logger.debug(f"进入了loop_k_end_func...")
+      code_str += "\"\\n\" // 进入了loop_k_end_func...\n"
       code_str += compile_time_for_loop_k_end_func_asm(LINES, COLS, K, UNROLL_K, real_lines, real_cols, vector_id_array_A, VEC_REG_A_LEN, vector_id_array_B, VEC_REG_B_LEN, register_scroll_B)
+      logger.debug(f"进入了loop_k_end_func...完成")
+      code_str += "\"\\n\" // 进入了loop_k_end_func...完成\n"
       FMA_CALCULATE_FLAG = 0
       STORE_C_FLAG = 0
+      logger.debug(f"进入了loop_k_end_last_loop_lt3_func...")
+      code_str += "\"\\n\" // 进入了loop_k_end_last_loop_lt3_func...\n"
       code_str += micro_kernel_loop_asm(-1, -1, LINES, COLS, real_lines, real_cols, next_lines, next_cols, vector_id_array_A, VEC_REG_A_LEN, vector_id_array_B, VEC_REG_B_LEN, register_scroll_B, LOOP_K_BEGIN_FLAG, LOOP_K_END_FLAG, REG_BLOCK_TRANS_FLAG, FMA_CALCULATE_FLAG, STORE_C_FLAG, WITH_BIAS_FLAG)
+      logger.debug(f"进入了loop_k_end_last_loop_lt3_func...完成")
+      code_str += "\"\\n\" // 进入了loop_k_end_last_loop_lt3_func...完成\n"
+      logger.debug(f"进入了pipeline<3的NR_LOOPS循环...完成")
+      code_str += "\"\\n\" // 进入了pipeline<3的NR_LOOPS循环...完成\n"
 
     else:
       for line in range(real_lines):
@@ -381,8 +403,12 @@ def compile_time_for_loop_k_end_func_asm(LINES, COLS, K, UNROLL_K, real_lines, r
     for line in range(real_lines):
       code_str += f"    \"prfm    PSTL1KEEP, [x{RESERVED_REG_NUM+line}, #64]              \\n\"\n"
 
+    logger.debug(f"进入了loop_k_end_main_loop_func...")
+    code_str += "\"\\n\" // 进入了loop_k_end_main_loop_func...\n"
     for LOOP_ID in range(REMAIN_K_LOOP_BEGIN, REMAIN_K_LOOP_END):
       code_str += micro_kernel_loop_asm(LOOP_ID, REMAIN_K_LOOP_END-1, LINES, COLS, real_lines, real_cols, real_lines, real_cols, vector_id_array_A, VEC_REG_A_LEN, vector_id_array_B, VEC_REG_B_LEN, register_scroll_B, LOOP_K_BEGIN_FLAG, LOOP_K_END_FLAG, REG_BLOCK_TRANS_FLAG, FMA_CALCULATE_FLAG, STORE_C_FLAG, WITH_BIAS_FLAG)
+    logger.debug(f"进入了loop_k_end_main_loop_func...完成")
+    code_str += "\"\\n\" // 进入了loop_k_end_main_loop_func...完成\n"
 
     # When K module UNROLL_K remainder 1, no calculation, direct store
     if (REMAIN_K_LOOP_BEGIN == REMAIN_K_LOOP_END):
@@ -390,9 +416,13 @@ def compile_time_for_loop_k_end_func_asm(LINES, COLS, K, UNROLL_K, real_lines, r
       code_str += micro_kernel_loop_asm(-1, -1, LINES, COLS, real_lines, real_cols, real_lines, real_cols, vector_id_array_A, VEC_REG_A_LEN, vector_id_array_B, VEC_REG_B_LEN, register_scroll_B, LOOP_K_BEGIN_FLAG, LOOP_K_END_FLAG, REG_BLOCK_TRANS_FLAG, FMA_CALCULATE_FLAG, STORE_C_FLAG, WITH_BIAS_FLAG)
 
     if Pipeline_strategy_level < 2: 
+      logger.debug(f"进入了loop_k_end_last_loop_lt2_func...")
+      code_str += "\"\\n\" // 进入了loop_k_end_last_loop_lt2_func...\n"
       FMA_CALCULATE_FLAG = 0
       STORE_C_FLAG = 1
       code_str += micro_kernel_loop_asm(-1, -1, LINES, COLS, real_lines, real_cols, real_lines, real_cols, vector_id_array_A, VEC_REG_A_LEN, vector_id_array_B, VEC_REG_B_LEN, register_scroll_B, LOOP_K_BEGIN_FLAG, LOOP_K_END_FLAG, REG_BLOCK_TRANS_FLAG, FMA_CALCULATE_FLAG, STORE_C_FLAG, WITH_BIAS_FLAG)
+      logger.debug(f"进入了loop_k_end_last_loop_lt2_func...完成")
+      code_str += "\"\\n\" // 进入了loop_k_end_last_loop_lt2_func...完成\n"
 
 
     return code_str
@@ -514,6 +544,8 @@ def n_dim_func_asm(REMAIN_N, K, UNROLL_K, NR, NR_LOOPS, MR_MAIN, MR_MAIN_LOOPS, 
     lines_branch_2 = MR_MAIN if not MR_REMAIN_LOOPS else MR_REMAIN
     cols_branch_1 = SIMD_LANE*NR if Main_N_flag else Edge_N
     cols_branch_2 = SIMD_LANE*NR if not Edge_N_flag else Edge_N
+    logger.debug(f"lines_branch_1: {lines_branch_1} (M方向的参数，如果是M方向主循环，则为MR_MAIN)")
+    logger.debug(f"lines_branch_2: {lines_branch_2} (M方向的参数，如果不是M方向剩余循环，则为MR_MAIN)")
 
     code_str = f""
     code_str += compile_time_for_init_func_asm(MR_MAIN, NR, K, UNROLL_K, lines_branch_1, cols_branch_1, vector_id_array_A, VEC_REG_A_LEN, vector_id_array_B, VEC_REG_B_LEN, register_scroll_B, with_bias)
@@ -643,6 +675,11 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, UNROLL_K = 8, NR_MAIN = 4, with_bias = 
     assert (NR_MAIN == 3 or NR_MAIN == 4 or NR_MAIN == 5)
 
     NR_MAIN_LOOPS, NR_REMAIN, NR_REMAIN_LOOPS, NR_MAIN_MR_MAIN, NR_MAIN_MR_MAIN_LOOPS, NR_MAIN_MR_REMAIN, NR_MAIN_MR_REMAIN_LOOPS, NR_REMAIN_MR_MAIN, NR_REMAIN_MR_MAIN_LOOPS, NR_REMAIN_MR_REMAIN, NR_REMAIN_MR_REMAIN_LOOPS = RBSA(M, N, NR_MAIN)
+
+    logger.debug(f"NR_MAIN_MR_MAIN_LOOPS: {NR_MAIN_MR_MAIN_LOOPS} (M方向是否要进行主循环)")
+    logger.debug(f"NR_MAIN_MR_MAIN: {NR_MAIN_MR_MAIN} (M方向主循环的次数)")
+    logger.debug(f"NR_MAIN_MR_REMAIN_LOOPS: {NR_MAIN_MR_REMAIN_LOOPS} (M方向是否要进行剩余循环)")
+    logger.debug(f"NR_MAIN_MR_REMAIN: {NR_MAIN_MR_REMAIN} (M方向剩余的块数)")
 
     code_str = ""
     code_str += f"""
