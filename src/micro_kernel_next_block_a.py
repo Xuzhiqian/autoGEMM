@@ -9,6 +9,8 @@ def micro_kernel_next_block_a_get_addr(line, col,
     if is_first_line and is_first_col: # 第0行第0列
         logger.debug("进入了A矩阵x寄存器初始化...")
         code_str += "\"\\n\" // 进入了A矩阵x寄存器初始化...\n"
+        logger.debug(f"next_lines = {next_lines}")
+        code_str += f"\"\\n\" // next_lines = {next_lines}\n"
         for j in range(next_lines):
             x_A_idx = RESERVED_REG_NUM + LINES + j
             if j == 0:

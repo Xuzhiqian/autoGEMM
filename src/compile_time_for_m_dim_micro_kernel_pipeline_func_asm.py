@@ -30,6 +30,7 @@ def compile_time_for_m_dim_micro_kernel_pipeline_lt3_func_asm(
     code_str += compile_time_for_loop_k_end_last_loop_lt3_func_asm(
         LINES, COLS,
         real_lines, real_cols,
+        next_lines, next_cols,
         vector_id_array_A, VEC_REG_A_LEN,
         vector_id_array_B, VEC_REG_B_LEN,
         register_scroll_B,

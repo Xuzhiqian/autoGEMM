@@ -83,6 +83,10 @@ def micro_kernel_loop_asm(
         line = i % LINES # 当前行
         col = i // LINES # 当前列
         is_last_line = (line == LINES - 1)
+        logger.debug(f"LINES, COLS = {LINES, COLS}")
+        logger.debug(f"line, col = {line, col}")
+        code_str += f"\"\\n\" // LINES, COLS = {LINES, COLS}\n"
+        code_str += f"\"\\n\" // line, col = {line, col}\n"
 
         if FMA_CALCULATE_FLAG:
             code_str += micro_kernel_main_computing(line, col,
@@ -114,6 +118,8 @@ def micro_kernel_loop_asm(
             continue
 
         if REG_BLOCK_TRANS_FLAG and is_last_k: # 只有启用REG_BLOCK_TRANS_FLAG及最后一个K时才需要进行C矩阵的x寄存器的偏移
+            logger.debug(f"next_lines = {next_lines}")
+            code_str += f"\"\\n\" // next_lines = {next_lines}\n"
             code_str += micro_kernel_next_block_c(line, col,
                                                   UNROLL_NR,
                                                   LINES, COLS,

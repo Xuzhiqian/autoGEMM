@@ -1,3 +1,4 @@
+from global_config import *
 from unroll_loop_id import UNROLL_LOOP_ID
 from micro_kernel_loop_asm import micro_kernel_loop_asm
 from micro_kernel_common import prefetch_C_data
@@ -20,7 +21,8 @@ def compile_time_for_loop_k_end_main_loop_func_asm(
 
     _, REMAIN_K_LOOP_BEGIN = UNROLL_LOOP_ID(K, UNROLL_K)
     REMAIN_K_LOOP_END = UNROLL_K if K % UNROLL_K == 0 else K % UNROLL_K
-
+    logger.debug(f"REMAIN_K_LOOP_BEGIN, REMAIN_K_LOOP_END = {REMAIN_K_LOOP_BEGIN, REMAIN_K_LOOP_END}")
+    code_str += f"\"\\n\" // REMAIN_K_LOOP_BEGIN, REMAIN_K_LOOP_END = {REMAIN_K_LOOP_BEGIN, REMAIN_K_LOOP_END}\n"
     for LOOP_ID in range(REMAIN_K_LOOP_BEGIN, REMAIN_K_LOOP_END):
         LAST_K_ID = REMAIN_K_LOOP_END - 1
         code_str += micro_kernel_loop_asm(
@@ -114,6 +116,7 @@ def compile_time_for_loop_k_end_last_loop_lt2_func_asm(
 def compile_time_for_loop_k_end_last_loop_lt3_func_asm(
     LINES, COLS,
     real_lines, real_cols,
+    next_lines, next_cols,
     vector_id_array_A, VEC_REG_A_LEN,
     vector_id_array_B, VEC_REG_B_LEN,
     register_scroll_B,
@@ -130,7 +133,7 @@ def compile_time_for_loop_k_end_last_loop_lt3_func_asm(
         LOOP_ID, LAST_K_ID,
         LINES, COLS,
         real_lines, real_cols,
-        real_lines, real_cols,
+        next_lines, next_cols,
         vector_id_array_A, VEC_REG_A_LEN,
         vector_id_array_B, VEC_REG_B_LEN,
         register_scroll_B,
@@ -159,6 +162,8 @@ def compile_time_for_loop_k_end_main_loop_internal_func_asm(
     code_str = ""
     code_str += prefetch_C_data(real_lines)
 
+    logger.debug(f"进入了loop_k_end_main_loop_func...")
+    code_str += "\"\\n\" // 进入了loop_k_end_main_loop_func...\n"
     code_str += compile_time_for_loop_k_end_main_loop_func_asm(
         LINES, COLS,
         K, UNROLL_K,
@@ -173,7 +178,11 @@ def compile_time_for_loop_k_end_main_loop_internal_func_asm(
         STORE_C_FLAG,
         WITH_BIAS_FLAG
     )
+    logger.debug(f"进入了loop_k_end_main_loop_func...完成")
+    code_str += "\"\\n\" // 进入了loop_k_end_main_loop_func...完成\n"
 
+    logger.debug(f"进入了loop_k_end_last_loop_func...")
+    code_str += "\"\\n\" // 进入了loop_k_end_last_loop_func...\n"
     code_str += compile_time_for_loop_k_end_last_loop_func_asm(
         LINES, COLS,
         K, UNROLL_K,
@@ -188,6 +197,8 @@ def compile_time_for_loop_k_end_main_loop_internal_func_asm(
         STORE_C_FLAG,
         WITH_BIAS_FLAG
     )
+    logger.debug(f"进入了loop_k_end_last_loop_func...完成")
+    code_str += "\"\\n\" // 进入了loop_k_end_last_loop_func...完成\n"
     return code_str
 
 def compile_time_for_loop_k_end_func_asm(
@@ -210,6 +221,8 @@ def compile_time_for_loop_k_end_func_asm(
 
     code_str = f""
 
+    logger.debug(f"进入了loop_k_end_main_loop_internal_func...")
+    code_str += "\"\\n\" // 进入了loop_k_end_main_loop_internal_func...\n"
     code_str += compile_time_for_loop_k_end_main_loop_internal_func_asm(
         LINES, COLS,
         K, UNROLL_K,
@@ -224,8 +237,12 @@ def compile_time_for_loop_k_end_func_asm(
         STORE_C_FLAG,
         WITH_BIAS_FLAG
     )
+    logger.debug(f"进入了loop_k_end_main_loop_internal_func...完成")
+    code_str += "\"\\n\" // 进入了loop_k_end_main_loop_internal_func...完成\n"
 
     if pipeline_strategy_level < 2:
+        logger.debug(f"进入了loop_k_end_last_loop_lt2_func...")
+        code_str += "\"\\n\" // 进入了loop_k_end_last_loop_lt2_func...\n"
         code_str += compile_time_for_loop_k_end_last_loop_lt2_func_asm(
             LINES, COLS,
             real_lines, real_cols,
@@ -236,5 +253,7 @@ def compile_time_for_loop_k_end_func_asm(
             REG_BLOCK_TRANS_FLAG,
             WITH_BIAS_FLAG
         )
+        logger.debug(f"进入了loop_k_end_last_loop_lt2_func...完成")
+        code_str += "\"\\n\" // 进入了loop_k_end_last_loop_lt2_func...完成\n"
 
     return code_str

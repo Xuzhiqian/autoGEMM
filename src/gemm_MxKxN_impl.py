@@ -1,7 +1,7 @@
 from laf_asm_code import laf_asm_code
 from global_config import *
 
-def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, uniq_id, repeat, pipeline_strategy_level = 0, UNROLL_K = 8, NR_MAIN = 4):
+def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, uniq_id, repeat, pipeline_strategy_level = 0, UNROLL_K = 8, NR_MAIN = 4, MRSA_FLAG = 0):
     # lda, ldb, ldc = K, N, N # 这里意味着C矩阵是行主序，A矩阵是行主序，B矩阵是行主序
     """Emit C code for gemm impl."""
     # 通过laf_asm_code生成了small_gemm接口
@@ -22,12 +22,12 @@ def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, uniq_id, repeat, pipeline_strategy_l
 namespace laf {{
 void small_gemm(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, int lda, int ldb, int ldc) {{
 """
-    cc_code += laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level=pipeline_strategy_level, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN, with_bias = 0)
+    cc_code += laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level=pipeline_strategy_level, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN, MRSA_FLAG=MRSA_FLAG, with_bias = 0)
     cc_code += f"""
 }}
 void small_gemm_with_bias(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, int lda, int ldb, int ldc) {{
 """
-    cc_code += laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level=pipeline_strategy_level, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN, with_bias = 1)
+    cc_code += laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level=pipeline_strategy_level, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN, MRSA_FLAG=MRSA_FLAG, with_bias = 1)
     cc_code += f"""
 }}
 }}

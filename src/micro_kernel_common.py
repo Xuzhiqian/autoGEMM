@@ -11,7 +11,8 @@ def get_vector_C_idx(line, col,
                      UNROLL_NR,
                      j,
                      COLS):
-    return line * COLS + col * UNROLL_NR + j
+    vector_C_idx = line * COLS + col * UNROLL_NR + j
+    return vector_C_idx
 
 def get_simd_col(col,
                  UNROLL_NR,
@@ -21,7 +22,8 @@ def get_simd_col(col,
 def get_last_simd_col(col,
                       UNROLL_NR,
                       j):
-    return SIMD_LANE * (col * UNROLL_NR + j)
+    last_simd_col = SIMD_LANE * (col * UNROLL_NR + j)
+    return last_simd_col
 
 def prefetch_C_data(real_lines):
     code_str = ""

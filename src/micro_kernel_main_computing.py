@@ -36,8 +36,14 @@ def micro_kernel_main_computing(line, col,
                     code_str += f"    \"fmul    z{vector_C_idx}.{VEC_SIGN}, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
         return code_str
 
+    logger.debug(f"UNROLL_NR = {UNROLL_NR}")
+    code_str += f"\"\\n\" // UNROLL_NR = {UNROLL_NR}\n"
+    logger.debug(f"real_lines, real_cols = {real_lines, real_cols}")
+    code_str += f"\"\\n\" // real_lines, real_cols = {real_lines, real_cols}\n"
     for j in range(UNROLL_NR):
         last_simd_col = get_last_simd_col(col, UNROLL_NR, j)
+        logger.debug(f"last_simd_col = {last_simd_col}")
+        code_str += f"\"\\n\" // last_simd_col = {last_simd_col}\n"
         if line < real_lines and last_simd_col < real_cols:
             actual_line = line
             if ( # 这里看起来似乎是一种line的调整
@@ -52,6 +58,10 @@ def micro_kernel_main_computing(line, col,
                 # line = line % real_lines = line
                 # 若VEC_REG_A_LEN < real_lines，则这里等价于
                 # line = (line + VEC_REG_A_LEN) % real_lines
+            logger.debug(f"actual_line = {actual_line}")
+            code_str += f"\"\\n\" // actual_line = {actual_line}\n"
+            logger.debug(f"vector_scroll_A = {vector_scroll_A}")
+            code_str += f"\"\\n\" // vector_scroll_A = {vector_scroll_A}\n"
             vector_C_idx = get_vector_C_idx(actual_line, col, UNROLL_NR, j, COLS)
             vector_B_idx = vector_id_array_B[vector_scroll_B[col * UNROLL_NR + j]]
             vector_A_idx = vector_scroll_A[A_odd_flag][actual_line]

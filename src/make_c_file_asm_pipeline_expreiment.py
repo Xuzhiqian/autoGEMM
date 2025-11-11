@@ -23,13 +23,14 @@ UNROLL_K = int(sys.argv[4]) # K方向的循环展开次数
 NR_MAIN = int(sys.argv[5]) # N方向的主循环大小
 REPEAT = int(sys.argv[6]) # 测试中循环的次数
 PIPELINE_STRATEGY_LEVEL = int(sys.argv[7]) # 流水优化策略等级
+MRSA_FLAG = int(sys.argv[8]) # 额外的分块值微调
 
 UNIQ_ID_LEN = 8
 uniq_id = "".join(random.choices(string.ascii_uppercase, k=UNIQ_ID_LEN))
 logger.debug(f"unique_id: {uniq_id} (用于作为接口名唯一性标识)")
 f = open('c_file_asm.cpp','w')
 logger.debug(f"调用gemm_MxKxN_impl传入M={M}, N={N}, K={K}，A，B，C都是行主序")
-f.write(gemm_MxKxN_impl(M, K, N, K, N, N, uniq_id, repeat=REPEAT, pipeline_strategy_level=PIPELINE_STRATEGY_LEVEL, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN))
+f.write(gemm_MxKxN_impl(M, K, N, K, N, N, uniq_id, repeat=REPEAT, pipeline_strategy_level=PIPELINE_STRATEGY_LEVEL, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN, MRSA_FLAG = MRSA_FLAG))
 f.close()
 
 f = open('Makefile', 'w')

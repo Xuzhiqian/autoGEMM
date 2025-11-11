@@ -87,12 +87,16 @@ def n_dim_func_asm(
     cols_branch_1 = SIMD_LANE * NR if Main_N_flag else Edge_N
     cols_branch_2 = SIMD_LANE * NR if not Edge_N_flag else Edge_N
 
+    code_str = f""
+
     logger.debug(f"Main_N_flag: {Main_N_flag} (是否是N的主循环)")
     logger.debug(f"Edge_N_flag: {Edge_N_flag} (是否是N的剩余循环)")
     logger.debug(f"Edge_N: {Edge_N} (剩余循环所需处理的长度)")
     logger.debug(f"NR_LOOPS: {NR_LOOPS} ()")
     logger.debug(f"lines_branch_1: {lines_branch_1} (M方向的参数，如果是M方向主循环，则为MR_MAIN)")
     logger.debug(f"lines_branch_2: {lines_branch_2} (M方向的参数，如果不是M方向剩余循环，则为MR_MAIN)")
+    code_str += f"\"\\n\" // lines_branch_1: {lines_branch_1}\n"
+    code_str += f"\"\\n\" // lines_branch_2: {lines_branch_2}\n"
     logger.debug(f"cols_branch_1: {cols_branch_1} (N方向的参数， 如果是N方向主循环，则为SIMD_LANE * NR)")
     logger.debug(f"cols_branch_2: {cols_branch_2} (N方向的参数， 如果不是N方向剩余循环，则为SIMD_LANE * NR)")
     # 这几个参数的使用也不太明确，下面用到的调用有
@@ -100,7 +104,6 @@ def n_dim_func_asm(
     # compile_time_for_n_dim_micro_kernel_pipeline_func_asm
     # compile_time_for_loop_k_end_func_asm
     
-    code_str = f""
     if SIMD == "SVE":
         code_str += f"    \"ptrue     p0.{VEC_SIGN}                  \\n\"\n"
         code_str += f"    \"mov       x28, #{SIMD_LANE if REMAIN_N % SIMD_LANE == 0 else REMAIN_N % SIMD_LANE}                  \\n\"\n"
@@ -126,7 +129,7 @@ def n_dim_func_asm(
             logger.debug(f"跳回到6处，6代表的是")
             code_str += f"  \"0:                                 \\n\"\n"
             code_str += f"    \"subs    {NR_LOOPS_REG}, {NR_LOOPS_REG}, #1                            \\n\"\n"
-            code_str += f"    \"beq     7f                       \\n\"\n" 
+            code_str += f"    \"beq     7f                       \\n\"\n"
             code_str += compile_time_for_n_dim_micro_kernel_pipeline_func_asm(
                 MR_MAIN, NR,
                 K, UNROLL_K,

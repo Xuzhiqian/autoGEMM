@@ -90,12 +90,18 @@ def micro_kernel_next_block_c(line, col,
                               WITH_BIAS_FLAG):
 
     code_str = ""
+    logger.debug("进入了micro_kernel_next_block_c_get_addr...")
+    code_str += "\"\\n\" // 进入了micro_kernel_next_block_c_get_addr...\n"
     code_str += micro_kernel_next_block_c_get_addr(line, col,
                                                    UNROLL_NR,
                                                    LINES, COLS,
                                                    next_lines, next_cols,
                                                    WITH_BIAS_FLAG)
+    logger.debug("进入了micro_kernel_next_block_c_get_addr...完成")
+    code_str += "\"\\n\" // 进入了micro_kernel_next_block_c_get_addr...完成\n"
 
+    logger.debug("进入了micro_kernel_next_block_c_load_data...")
+    code_str += "\"\\n\" // 进入了micro_kernel_next_block_c_load_data...\n"
     code_str += micro_kernel_next_block_c_load_data(line, col,
                                                     UNROLL_NR,
                                                     LINES, COLS,
@@ -103,5 +109,7 @@ def micro_kernel_next_block_c(line, col,
                                                     VEC_REG_B_LEN,
                                                     next_lines, next_cols,
                                                     WITH_BIAS_FLAG)
+    logger.debug("进入了micro_kernel_next_block_c_load_data...完成")
+    code_str += "\"\\n\" // 进入了micro_kernel_next_block_c_load_data...完成\n"
 
     return code_str
