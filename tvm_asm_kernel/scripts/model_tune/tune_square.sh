@@ -29,18 +29,17 @@ if [[ -f $MNK_file ]]; then
     rm -rf $MNK_file
 fi
 
-for (( i=0; i<6; i++))
+LOOP_NUM=${#M[@]}
+for (( i=0; i<LOOP_NUM; i++))
 do
 	echo ${M[$i]} ${N[$i]} ${K[$i]} >> MNK.txt
 done
 
 bash ./scripts/utils/tune.sh $arch $threads $tune_num 
 
+time=$(date "+%Y%m%d%H%M%S")
 if [[ -f "tune_output/tune.over" ]]; then
-	if [[ -f "scheduler_house/square" ]]; then
-		rm -rf scheduler_house/square
-	fi
-	mkdir -p scheduler_house/square
-    cp tune_output/scheduler_summary.log scheduler_house/square/scheduler_summary.log
+	mkdir -p scheduler_house/square/$time
+    cp -r tune_output/* scheduler_house/square/$time/
+    cp -r build/* scheduler_house/square/$time/
 fi
-

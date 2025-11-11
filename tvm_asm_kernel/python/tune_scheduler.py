@@ -3,6 +3,11 @@ from tvm import te
 from tvm import autotvm
 from tvm.autotvm.task import ConfigEntity
 
+from loguru import logger
+import time
+logger.remove()
+logger.add(f'../data/log/{time.strftime("%Y%m%d%H", time.localtime())}.log')
+
 import os
 import sys
 import random
@@ -57,6 +62,10 @@ if __name__ == "__main__":
     elif args.arch == "a64fx" :
         instruction = "sve"
         target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+{instruction}"
-        
+
+    pack_dso = True
+
+    logger.info(f"Start tune for M={M}, K={K}, N={N}, record_file={record_file}, n_trial={step}, instruction={instruction}, target={target}")
     tune(M, K, N, record_file, parallel, n_trial=step, instruction=instruction, target=target)
-    evaluate(M, K, N, record_file, parallel, pack_dso=False, instruction=instruction, target=target)
+    logger.info(f"Start evaluate for M={M}, K={K}, N={N}, record_file={record_file}, parallel={parallel}, pack_dso={pack_dso}, instruction={instruction}, target={target}")
+    evaluate(M, K, N, record_file, parallel, pack_dso=pack_dso, instruction=instruction, target=target)

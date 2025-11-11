@@ -5,6 +5,17 @@ from tvm import autotvm
 import os
 from config.common_config import measure_option
 
+from loguru import logger
+import time
+logger.remove()
+logger.add(f'../data/log/{time.strftime("%Y%m%d%H", time.localtime())}.log')
+
+# logging config (for printing tuning log to the screen)
+import logging
+import sys
+logging.getLogger("autotvm").setLevel(logging.DEBUG)
+logging.getLogger("autotvm").addHandler(logging.StreamHandler(sys.stdout))
+
 def tune(
     M,
     K,
@@ -26,7 +37,7 @@ def tune(
     task = autotvm.task.create(
         "matmul", args=[M, K, N, parallel, instruction], target=target
     )
-    print(task.config_space)
+    logger.info(task.config_space)
 
     # tuner = autotvm.tuner.XGBTuner(task)
     tuner = autotvm.tuner.XGBTuner(task, feature_type="knob")

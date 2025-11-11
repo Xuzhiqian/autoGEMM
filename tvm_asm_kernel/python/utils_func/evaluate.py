@@ -62,10 +62,17 @@ def evaluate(M, K, N, record_file, parallel, pack_dso, instruction="neon", targe
     gflops = 2 * M * N * K * 1e-9 / mean_time
 
     print("TVM offline GFLOPS: %f, avg time: %f ms" % (gflops, mean_time * 1000))
+    print(f"pack_dso is {pack_dso}")
 
     if pack_dso:
-        packb_func.save(f"../build/gemm_obj/{packb_func.name}.o")
-        func.save(f"../build/gemm_obj/{func.name}.o")
-        os.system(f"ar rcs ../build/library/GEMM_{M}X{N}X{K}_kernel.a ../build/gemm_obj/OP_GEMM_{M}X{N}X{K}*.o")
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        packb_func_path = os.path.join(current_directory, f"../../build/gemm_obj/{packb_func.name}.o")
+        func_path = os.path.join(current_directory, f"../../build/gemm_obj/{func.name}.o")
+        packb_func.save(packb_func_path)
+        func.save(func_path)
+        static_kernel_path = os.path.join(current_directory, f"../../build/library/GEMM_{M}X{N}X{K}_kernel.a")
+        op_gemm_path = os.path.join(current_directory, f"../../build/gemm_obj/OP_GEMM_{M}X{N}X{K}*.o")
+        os.system(f"ar rcs {static_kernel_path} {op_gemm_path}")
+        shared_kernel_path = os.path.join(current_directory, f"../../build/library/GEMM_{M}X{N}X{K}_kernel.so")
         func.import_module(packb_func)
-        func.export_library(f"../build/library/GEMM_{M}X{N}X{K}_kernel.so")
+        func.export_library(shared_kernel_path)
