@@ -6,7 +6,8 @@ from tvm.autotvm.task import ConfigEntity
 from loguru import logger
 import time
 logger.remove()
-logger.add(f'../data/log/{time.strftime("%Y%m%d%H", time.localtime())}.log')
+logger.add(os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../data/log/{time.strftime("%Y%m%d", time.localtime())}/{time.strftime("%Y%m%d%H", time.localtime())}.log'))
+
 
 import os
 import sys

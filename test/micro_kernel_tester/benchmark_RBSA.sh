@@ -27,15 +27,15 @@ do
 
 	echo -n $M, $N, $K," "
 	
-	python make_c_file_asm_RBSA_experiment.py $M $N $K $UNROLL $NR $REPEAT 0
+	python ../../experiment/RBSA_optimization/make_c_file_asm_RBSA_experiment.py $M $N $K $UNROLL $NR $REPEAT 0
 	make -s
 	./benchmark_kernel
 
-	python make_c_file_asm_RBSA_experiment.py $M $N $K $UNROLL $NR $REPEAT 1
+	python ../../experiment/RBSA_optimization/make_c_file_asm_RBSA_experiment.py $M $N $K $UNROLL $NR $REPEAT 1
 	make -s
 	./benchmark_kernel
 
-	python make_c_file_asm_RBSA_experiment.py $M $N $K $UNROLL $NR $REPEAT 2
+	python ../../experiment/RBSA_optimization/make_c_file_asm_RBSA_experiment.py $M $N $K $UNROLL $NR $REPEAT 2
 	make -s
 	./benchmark_kernel
 
