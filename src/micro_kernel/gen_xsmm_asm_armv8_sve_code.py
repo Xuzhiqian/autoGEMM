@@ -38,7 +38,6 @@ extern "C" int gemm_{M}x{K}x{N}_{lda}_{ldb}_{ldc}_xsmm_with_bias_{uniq_id}(const
 
     current_directory = os.path.dirname(os.path.abspath(__file__))
     generated_micro_kernel_path = os.path.join(current_directory, f'../../data/tune_output/build/generated_micro_kernel')
-    os.mkdir(generated_micro_kernel_path, exist_ok=True)
     generated_micro_kernel_file_path = os.path.join(generated_micro_kernel_path, f'c_file_asm_{M}_{K}_{N}_{lda}_{ldb}_{ldc}_{uniq_id}.cpp')
     with open(generated_micro_kernel_file_path, 'w') as f:
       f.write(cc_code)

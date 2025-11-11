@@ -31,6 +31,7 @@ if [[ -d $build_output_path ]]; then
 fi
 mkdir -p $build_output_path
 mkdir -p $build_output_path/gemm_obj
+mkdir -p $build_output_path/generated_micro_kernel
 mkdir -p $build_output_path/library
 
 MNK_file=${tune_output_path}/MNK.txt 
