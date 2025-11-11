@@ -49,16 +49,14 @@ if __name__ == "__main__":
     step = args.step
     parallel = args.parallel
 
-    if args.arch == "linux":
-        instruction = "neon"
-        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+{instruction}"
-    elif args.arch == "a64fx":
-        instruction = "sve"
-        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+{instruction}"
+    if SIMD == "NEON":
+        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+neon"
+    elif SIMD == "SVE":
+        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+sve"
 
     pack_dso = True
 
-    logger.info(f"Start tune for M={M}, K={K}, N={N}, record_file={record_file}, n_trial={step}, instruction={instruction}, target={target}")
-    tune(M, K, N, record_file, parallel, n_trial=step, instruction=instruction, target=target)
-    logger.info(f"Start evaluate for M={M}, K={K}, N={N}, record_file={record_file}, parallel={parallel}, pack_dso={pack_dso}, instruction={instruction}, target={target}")
-    evaluate(M, K, N, record_file, parallel, pack_dso=pack_dso, instruction=instruction, target=target)
+    logger.info(f"Start tune for M={M}, K={K}, N={N}, record_file={record_file}, n_trial={step}, target={target}")
+    tune(M, K, N, record_file, parallel, n_trial=step, target=target)
+    logger.info(f"Start evaluate for M={M}, K={K}, N={N}, record_file={record_file}, parallel={parallel}, pack_dso={pack_dso}, target={target}")
+    evaluate(M, K, N, record_file, parallel, pack_dso=pack_dso, target=target)

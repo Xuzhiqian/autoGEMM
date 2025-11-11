@@ -30,12 +30,10 @@ if __name__ == "__main__":
     parallel = args.parallel
     best_schedule_file = args.scheduler_log
 
-    if args.arch == "linux" :
-        instruction = "neon"
-        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+{instruction}"
-    elif args.arch == "a64fx" :
-        instruction = "sve"
-        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+{instruction}"
+    if SIMD == "NEON" :
+        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+neon"
+    elif SIMD == "SVE" :
+        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+sve"
         
     # print('%d, %d, %d' % (M, N, K))
-    evaluate(M, K, N, best_schedule_file, parallel, pack_dso=True, instruction=instruction, target=target)
+    evaluate(M, K, N, best_schedule_file, parallel, pack_dso=True, target=target)

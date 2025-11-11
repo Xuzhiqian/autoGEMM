@@ -1,3 +1,4 @@
+from global_config import SIMD
 import re
 import tvm
 from tvm import te
@@ -6,7 +7,7 @@ from tvm.autotvm.task import ConfigEntity
 from template.gen_asm_code.tvm_extern_asm_micro_kernel import intrin_gemm_MxKxN, gemm_MxKxN_impl
 
 @autotvm.template("matmul")
-def matmul(M, K, N, parallel, instruction):
+def matmul(M, K, N, parallel):
     cfg = autotvm.get_config()
 
     # Tiling structure: split M/N/K into 3 axes each.
@@ -17,10 +18,10 @@ def matmul(M, K, N, parallel, instruction):
     # Micro-kernel parameters used in tensorization.
     cfg.define_knob("nr_main_knob", [3, 4, 5])
     cfg.define_knob("MRSA_FLAG", [0, 1])
-    if re.search(r"neon", instruction) :
+    if SIMD == "NEON" :
         cfg.define_knob("unroll_k_knob", [8, 16, 32])
         cfg.define_knob("padding_size", [1, 4])
-    elif re.search(r"sve", instruction) :
+    elif SIMD == "SVE" :
         cfg.define_knob("unroll_k_knob", [4, 8, 16])
         cfg.define_knob("padding_size", [1, 4, 16])
 
@@ -99,7 +100,6 @@ def matmul(M, K, N, parallel, instruction):
                                 cfg["unroll_k_knob"].val,
                                 cfg["nr_main_knob"].val,
                                 cfg["MRSA_FLAG"].val,
-                                instruction,
                                 uniq_id
                                 ))
 

@@ -8,13 +8,13 @@ from tvm.autotvm.task import ConfigEntity
 import numpy as np
 from template.asm_micro_kernel_template import matmul
 
-def evaluate(M, K, N, record_file, parallel, pack_dso, instruction="neon", target="llvm"):
+def evaluate(M, K, N, record_file, parallel, pack_dso, target="llvm"):
     ctx = tvm.cpu(0)
     dtype = "float32"
 
     with autotvm.apply_history_best(record_file):
         with tvm.target.Target(target):
-            s, arg_buf = matmul(M, K, N, parallel, instruction)
+            s, arg_buf = matmul(M, K, N, parallel)
             func = tvm.build(s, arg_buf, name="OP_GEMM_%dX%dX%d" % (M, N, K), target=tvm.target.Target(target))
             # print(tvm.lower(s, arg_buf))
 
@@ -23,7 +23,7 @@ def evaluate(M, K, N, record_file, parallel, pack_dso, instruction="neon", targe
             c = tvm.nd.array(np.zeros((M, N), dtype=dtype), ctx)
 
             workload = autotvm.task.args_to_workload(
-                [M, K, N, parallel, instruction], "matmul"
+                [M, K, N, parallel], "matmul"
             )
             tgt = tvm.target.Target.current()
             cfg = autotvm.task.DispatchContext.current.query(tgt, workload)

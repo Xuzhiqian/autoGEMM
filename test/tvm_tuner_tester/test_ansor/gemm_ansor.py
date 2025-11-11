@@ -26,12 +26,10 @@ N = args.n
 K = args.k
 dtype = "float32"
 
-if args.arch == "linux":
-    instruction = "neon"
-    target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+{instruction}"
-elif args.arch == "a64fx":
-    instruction = "sve"
-    target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+{instruction}"
+if SIMD == "NEON":
+    target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+neon"
+elif SIMD == "SVE":
+    target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+sve"
 
 @auto_scheduler.register_workload
 def gemm_ansor(M, N, K):
