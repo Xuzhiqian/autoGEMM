@@ -12,46 +12,46 @@ def NRSA(N, NR_MAIN):
     logger.debug(f"NR_REMAIN_LOOPS = 1 if NR_REMAIN else 0 = 1")
     logger.debug(f"NR_REMAIN_LOOPS = 1 if {NR_REMAIN} else 0")
     logger.debug(f"NR_REMAIN_LOOPS = {NR_REMAIN_LOOPS} (N方向的剩余循环)")
-    # if NR_MAIN == 3:
-    #   if NR_REMAIN == 1 and NR_MAIN_LOOPS >= 1 :
-    #     NR_MAIN_LOOPS -= 1
-    #     NR_REMAIN = 4
-    #   elif NR_REMAIN == 2 and NR_MAIN_LOOPS >= 1 :
-    #     NR_MAIN_LOOPS -= 1
-    #     NR_REMAIN = 5
-    # elif NR_MAIN == 4 :
-    #   if NR_REMAIN == 1 and NR_MAIN_LOOPS >= 1 :
-    #     NR_MAIN_LOOPS -= 1
-    #     NR_REMAIN = 5
-    #   elif NR_REMAIN == 2 :
-    #     if NR_MAIN_LOOPS >= 2 :
-    #       NR_MAIN_LOOPS -= 2
-    #       NR_REMAIN = 5
-    #       NR_REMAIN_LOOPS = 2
-    #     elif NR_MAIN_LOOPS >= 1 :
-    #       NR_MAIN_LOOPS -= 1
-    #       NR_REMAIN = 6
-    #   elif NR_REMAIN == 3 and NR_MAIN_LOOPS >= 3 :
-    #     NR_MAIN_LOOPS -= 3
-    #     NR_REMAIN = 5
-    #     NR_REMAIN_LOOPS = 3
-    # elif NR_MAIN == 5 :
-    #   if NR_REMAIN == 1 :
-    #     if NR_MAIN_LOOPS >= 3 :
-    #       NR_MAIN_LOOPS -= 3
-    #       NR_REMAIN = 4
-    #       NR_REMAIN_LOOPS = 4
-    #     elif NR_MAIN_LOOPS >= 1 :
-    #       NR_MAIN_LOOPS -= 1
-    #       NR_REMAIN = 6
-    #   elif NR_REMAIN == 2 and NR_MAIN_LOOPS >= 2 :
-    #     NR_MAIN_LOOPS -= 2
-    #     NR_REMAIN = 4
-    #     NR_REMAIN_LOOPS = 3
-    #   elif NR_REMAIN == 3 and NR_MAIN_LOOPS >= 1 :
-    #     NR_MAIN_LOOPS -= 1
-    #     NR_REMAIN = 4
-    #     NR_REMAIN_LOOPS = 2
+    if NR_MAIN == 3:
+      if NR_REMAIN == 1 and NR_MAIN_LOOPS >= 1 :
+        NR_MAIN_LOOPS -= 1
+        NR_REMAIN = 4
+      elif NR_REMAIN == 2 and NR_MAIN_LOOPS >= 1 :
+        NR_MAIN_LOOPS -= 1
+        NR_REMAIN = 5
+    elif NR_MAIN == 4 :
+      if NR_REMAIN == 1 and NR_MAIN_LOOPS >= 1 :
+        NR_MAIN_LOOPS -= 1
+        NR_REMAIN = 5
+      elif NR_REMAIN == 2 :
+        if NR_MAIN_LOOPS >= 2 :
+          NR_MAIN_LOOPS -= 2
+          NR_REMAIN = 5
+          NR_REMAIN_LOOPS = 2
+        elif NR_MAIN_LOOPS >= 1 :
+          NR_MAIN_LOOPS -= 1
+          NR_REMAIN = 6
+      elif NR_REMAIN == 3 and NR_MAIN_LOOPS >= 3 :
+        NR_MAIN_LOOPS -= 3
+        NR_REMAIN = 5
+        NR_REMAIN_LOOPS = 3
+    elif NR_MAIN == 5 :
+      if NR_REMAIN == 1 :
+        if NR_MAIN_LOOPS >= 3 :
+          NR_MAIN_LOOPS -= 3
+          NR_REMAIN = 4
+          NR_REMAIN_LOOPS = 4
+        elif NR_MAIN_LOOPS >= 1 :
+          NR_MAIN_LOOPS -= 1
+          NR_REMAIN = 6
+      elif NR_REMAIN == 2 and NR_MAIN_LOOPS >= 2 :
+        NR_MAIN_LOOPS -= 2
+        NR_REMAIN = 4
+        NR_REMAIN_LOOPS = 3
+      elif NR_REMAIN == 3 and NR_MAIN_LOOPS >= 1 :
+        NR_MAIN_LOOPS -= 1
+        NR_REMAIN = 4
+        NR_REMAIN_LOOPS = 2
 
     logger.debug(f"Adjusted NR_MAIN_LOOPS = {NR_MAIN_LOOPS}")
     logger.debug(f"Adjusted NR_REMAIN = {NR_REMAIN}")

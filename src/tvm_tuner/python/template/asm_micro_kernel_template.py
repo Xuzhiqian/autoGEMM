@@ -90,12 +90,12 @@ def matmul(M, K, N, parallel, instruction):
                                 )
     s[C].tensorize(yi, micro_kernel)
     s[C].pragma(pragma_axis, "import_llvm", gemm_MxKxN_impl(
-                                cfg["tile_x"].size[-1],
-                                cfg["tile_k"].size[-1], 
-                                cfg["tile_y"].size[-1],
-                                K,
-                                bn_ceil,
-                                N,
+                                cfg["tile_x"].size[-1], # 最小层级的M
+                                cfg["tile_k"].size[-1], # 最小层级的K
+                                cfg["tile_y"].size[-1], # 最小层级的N
+                                K,       # lda
+                                bn_ceil, # ldb
+                                N,       # ldc
                                 cfg["unroll_k_knob"].val,
                                 cfg["nr_main_knob"].val,
                                 cfg["MRSA_FLAG"].val,

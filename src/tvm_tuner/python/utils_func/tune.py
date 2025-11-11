@@ -1,15 +1,10 @@
+from global_config import *
 import tvm
 from tvm import te
 from tvm import autotvm
 
 import os
 from config.common_config import measure_option
-
-from loguru import logger
-import time
-logger.remove()
-logger.add(os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../data/log/{time.strftime("%Y%m%d", time.localtime())}/{time.strftime("%Y%m%d%H", time.localtime())}.log'))
-
 
 # logging config (for printing tuning log to the screen)
 import logging
