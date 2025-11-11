@@ -1,8 +1,5 @@
-import tvm
-from tvm import autotvm
-
-import os
 import argparse
+from tvm import autotvm
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

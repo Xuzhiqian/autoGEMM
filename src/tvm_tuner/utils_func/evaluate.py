@@ -66,13 +66,13 @@ def evaluate(M, K, N, record_file, parallel, pack_dso, instruction="neon", targe
 
     if pack_dso:
         current_directory = os.path.dirname(os.path.abspath(__file__))
-        packb_func_path = os.path.join(current_directory, f"../../build/gemm_obj/{packb_func.name}.o")
-        func_path = os.path.join(current_directory, f"../../build/gemm_obj/{func.name}.o")
+        packb_func_path = os.path.join(current_directory, f"../../../data/tune_output/build/gemm_obj/{packb_func.name}.o")
+        func_path = os.path.join(current_directory, f"../../../data/tune_output/build/gemm_obj/{func.name}.o")
         packb_func.save(packb_func_path)
         func.save(func_path)
-        static_kernel_path = os.path.join(current_directory, f"../../build/library/GEMM_{M}X{N}X{K}_kernel.a")
-        op_gemm_path = os.path.join(current_directory, f"../../build/gemm_obj/OP_GEMM_{M}X{N}X{K}*.o")
+        static_kernel_path = os.path.join(current_directory, f"../../../data/tune_output/build/library/GEMM_{M}X{N}X{K}_kernel.a")
+        op_gemm_path = os.path.join(current_directory, f"../../../data/tune_output/build/gemm_obj/OP_GEMM_{M}X{N}X{K}*.o")
         os.system(f"ar rcs {static_kernel_path} {op_gemm_path}")
-        shared_kernel_path = os.path.join(current_directory, f"../../build/library/GEMM_{M}X{N}X{K}_kernel.so")
+        shared_kernel_path = os.path.join(current_directory, f"../../../data/tune_output/build/library/GEMM_{M}X{N}X{K}_kernel.so")
         func.import_module(packb_func)
         func.export_library(shared_kernel_path)
