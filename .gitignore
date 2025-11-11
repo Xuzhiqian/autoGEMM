@@ -137,3 +137,5 @@ benchmark_kernel
 kernel_params_list.hpp
 MNK.txt
 .vscode
+generated_micro_kernel/
+*.tar.gz
