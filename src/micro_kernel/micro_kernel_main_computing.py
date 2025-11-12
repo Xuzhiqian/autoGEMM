@@ -33,7 +33,10 @@ def micro_kernel_main_computing(line, col,
                     code_str += f"    \"fmul    v{vector_C_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_B_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_A_idx}.{VEC_SIGN}[{mod_simd_lane_loop_id}]             \\n\"\n"
                 if SIMD == "SVE":
                     vector_C_idx = VEC_REG_A_LEN + VEC_REG_B_LEN + get_vector_C_idx(line, col, UNROLL_NR, j, COLS)
-                    code_str += f"    \"fmul    z{vector_C_idx}.{VEC_SIGN}, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
+                    if UNROLL_LANE == 1:
+                        code_str += f"    \"fmul    z{vector_C_idx}.{VEC_SIGN}, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
+                    else:
+                        code_str += f"    \"fmul    z{vector_C_idx}.{VEC_SIGN}, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}[{mod_simd_lane_loop_id}]             \\n\"\n"
         return code_str
 
     logger.debug(f"UNROLL_NR = {UNROLL_NR}")
@@ -69,8 +72,11 @@ def micro_kernel_main_computing(line, col,
                 code_str += f"    \"fmla    v{vector_C_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_B_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_A_idx}.{VEC_SIGN}[{mod_simd_lane_loop_id}]             \\n\"\n"
             if SIMD == "SVE":
                 vector_C_idx = VEC_REG_A_LEN + VEC_REG_B_LEN + get_vector_C_idx(actual_line, col, UNROLL_NR, j, COLS)
-                if last_simd_col + SIMD_LANE <= real_cols:
-                    code_str += f"    \"fmla    z{vector_C_idx}.{VEC_SIGN}, p0/m, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
+                if UNROLL_LANE == 1:
+                    if last_simd_col + SIMD_LANE <= real_cols:
+                        code_str += f"    \"fmla    z{vector_C_idx}.{VEC_SIGN}, p0/m, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
+                    else:
+                        code_str += f"    \"fmla    z{vector_C_idx}.{VEC_SIGN}, p1/m, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
                 else:
-                    code_str += f"    \"fmla    z{vector_C_idx}.{VEC_SIGN}, p1/m, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
+                    code_str += f"    \"fmla    z{vector_C_idx}.{VEC_SIGN}, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}[{mod_simd_lane_loop_id}]             \\n\"\n"
     return code_str
