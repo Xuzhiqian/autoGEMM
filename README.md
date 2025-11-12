@@ -1,3 +1,3 @@
 # autoGEMM
 
-存放autoGEMM优化代码
+Combining TVM and auto generated micro kernels to achieve better performance on kunpeng platforms.
