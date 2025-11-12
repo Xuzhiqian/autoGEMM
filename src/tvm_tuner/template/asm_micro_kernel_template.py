@@ -1,4 +1,4 @@
-from global_config import SIMD
+from global_config import SIMD, UNROLL_LANE
 import re
 import tvm
 from tvm import te
@@ -18,11 +18,10 @@ def matmul(M, K, N, parallel):
     # Micro-kernel parameters used in tensorization.
     cfg.define_knob("nr_main_knob", [3, 4, 5])
     cfg.define_knob("MRSA_FLAG", [0, 1])
+    cfg.define_knob("unroll_k_knob", [UNROLL_LANE * 2, UNROLL_LANE * 4, UNROLL_LANE * 8])
     if SIMD == "NEON" :
-        cfg.define_knob("unroll_k_knob", [8, 16, 32])
         cfg.define_knob("padding_size", [1, 4])
     elif SIMD == "SVE" :
-        cfg.define_knob("unroll_k_knob", [4, 8, 16])
         cfg.define_knob("padding_size", [1, 4, 16])
 
     padding_size = cfg["padding_size"].val
