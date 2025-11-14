@@ -2,6 +2,7 @@ from global_config import *
 from micro_kernel_common import get_vector_C_idx
 from micro_kernel_common import get_last_simd_col
 from micro_kernel_common import get_simd_col
+from micro_kernel_common import load_C_data
 
 def micro_kernel_next_block_c_get_addr(line, col,
                                        UNROLL_NR,
@@ -29,8 +30,6 @@ def micro_kernel_next_block_c_get_addr(line, col,
                         code_str += f"    \"add     x{x_C_idx}, x{x_C_idx - 2}, {LDC}, lsl #1    \\n\" // 将x{x_C_idx - 2}加上2倍的{LDC}后存入x{x_C_idx}\n"
                     if SIMD == "SVE":
                         code_str += f"    \"add     x{x_C_idx}, x{x_C_idx - 2}, %[ldc], lsl #1    \\n\" // 将x{x_C_idx - 2}加上2倍的%[ldc]后存入x{x_C_idx}\n"
-            logger.debug("进入了C矩阵x寄存器初始化...完成")
-            code_str += "\"\\n\" // 进入了C矩阵x寄存器初始化...完成\n"
     else: # 有BIAS的话是每行都进行C寄存器的偏移
         logger.debug("进入了C矩阵x寄存器初始化...")
         code_str += "\"\\n\" // 进入了C矩阵x寄存器初始化...\n"
@@ -48,9 +47,9 @@ def micro_kernel_next_block_c_get_addr(line, col,
                     code_str += f"    \"add     x{x_C_idx}, x{x_C_idx - 2}, {LDC}, lsl #1    \\n\"\n"
                 if SIMD == "SVE":
                     code_str += f"    \"add     x{x_C_idx}, x{x_C_idx - 2}, %[ldc], lsl #1    \\n\"\n"
-        logger.debug("进入了C矩阵x寄存器初始化...完成")
-        code_str += "\"\\n\" // 进入了C矩阵x寄存器初始化...完成\n"
 
+    logger.debug("进入了C矩阵x寄存器初始化...完成")
+    code_str += "\"\\n\" // 进入了C矩阵x寄存器初始化...完成\n"
     return code_str
 
 def micro_kernel_next_block_c_load_data(line, col,
@@ -70,13 +69,9 @@ def micro_kernel_next_block_c_load_data(line, col,
         last_simd_col = get_last_simd_col(col, UNROLL_NR, j)
         simd_col = get_simd_col(col, UNROLL_NR, j)
         if line < next_lines and last_simd_col < next_cols:
-            vector_C_idx = get_vector_C_idx(line, col, UNROLL_NR, j, COLS)
+            vector_C_idx = get_vector_C_idx(line, col, UNROLL_NR, j, COLS, VEC_REG_A_LEN, VEC_REG_B_LEN)
             x_C_idx = RESERVED_REG_NUM + line
-            if SIMD == "NEON":
-                code_str += f"    \"ldr     q{vector_C_idx}, [x{x_C_idx}, #{simd_col * SIMD_BYTES}]           \\n\"\n"
-            if SIMD == "SVE":
-                vector_C_idx = VEC_REG_A_LEN + VEC_REG_B_LEN + get_vector_C_idx(line, col, UNROLL_NR, j, COLS)
-                code_str += f"    \"{LD1}     z{vector_C_idx}.{VEC_SIGN}, p0/z, [x{x_C_idx}, #{simd_col}, mul vl]           \\n\"\n"
+            code_str += load_C_data(vector_C_idx, x_C_idx, simd_col)
     logger.debug("进入了C矩阵数据加载...完成")
     code_str += "\"\\n\" // 进入了C矩阵数据加载...完成\n"
     return code_str
