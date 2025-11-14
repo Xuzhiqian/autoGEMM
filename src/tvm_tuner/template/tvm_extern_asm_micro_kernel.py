@@ -102,7 +102,7 @@ def intrin_gemm_MxKxN(M, K, N, lda, ldb, ldc):
 
 
 def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, unroll_k, nr_main, MRSA_FLAG, uniq_id):
-    from src.micro_kernel.gen_xsmm_asm_armv8_code import xsmm_asm_armv8_code
+    from gen_xsmm_asm_armv8_code import xsmm_asm_armv8_code
 
     # Create c source code
     cc_code = xsmm_asm_armv8_code(M, K, N, lda, ldb, ldc, unroll_k, nr_main, MRSA_FLAG, uniq_id)
