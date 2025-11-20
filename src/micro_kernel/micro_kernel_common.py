@@ -1,14 +1,33 @@
 from global_config import *
 
+def get_permuted_lines(real_lines,
+                       VEC_REG_A_LEN):
+    permuted_lines = real_lines - VEC_REG_A_LEN % real_lines
+    return permuted_lines
+
+def get_permuted_line(line,
+                      real_lines,
+                      VEC_REG_A_LEN):
+    permuted_line = (line + VEC_REG_A_LEN % real_lines) % real_lines
+    return permuted_line
+
 def get_vector_A_idx(line,
                      A_odd_flag,
                      vector_scroll_A):
     return vector_scroll_A[A_odd_flag][line]
 
+def get_x_A_idx(line,
+                LINES):
+    return RESERVED_REG_NUM + LINES + line
+
 def get_vector_B_idx(j,
                      vector_id_array_B,
                      vector_scroll_B):
     return vector_id_array_B[vector_scroll_B[j]]
+
+def get_x_B_idx(B_odd_flag,
+                register_scroll_B):
+    return register_scroll_B[B_odd_flag]
 
 def get_vector_C_idx(line, col,
                      UNROLL_NR,
@@ -20,6 +39,9 @@ def get_vector_C_idx(line, col,
     if SIMD == "SVE":
         vector_C_idx += VEC_REG_A_LEN + VEC_REG_B_LEN
     return vector_C_idx
+
+def get_x_C_idx(line):
+    return RESERVED_REG_NUM + line
 
 def get_simd_col(col,
                  UNROLL_NR,
@@ -35,7 +57,7 @@ def get_last_simd_col(col,
 def prefetch_C_data(real_lines):
     code_str = ""
     for line in range(real_lines):
-        x_C_idx = RESERVED_REG_NUM + line
+        x_C_idx = get_x_C_idx(line)
         code_str += f"    \"prfm    PSTL1KEEP, [x{x_C_idx}, #64]              \\n\" // 从x{x_C_idx}预取C矩阵数据\n"
     return code_str
 

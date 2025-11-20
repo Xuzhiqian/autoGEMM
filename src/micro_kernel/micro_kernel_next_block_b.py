@@ -2,6 +2,7 @@ from global_config import *
 from micro_kernel_common import get_simd_col
 from micro_kernel_common import get_last_simd_col
 from micro_kernel_common import get_vector_B_idx
+from micro_kernel_common import get_x_B_idx
 from micro_kernel_common import load_B_data_and_offset
 
 def micro_kernel_next_block_b(line, col,
@@ -32,7 +33,7 @@ def micro_kernel_next_block_b(line, col,
                 continue
             # B矩阵的数据加载和x寄存器偏移是交叉的
             vector_B_idx = get_vector_B_idx(simd_col, vector_id_array_B, vector_scroll_B)
-            x_B_idx = register_scroll_B[B_odd_flag]
+            x_B_idx = get_x_B_idx(B_odd_flag, register_scroll_B)
             code_str_b, ptr_B_POS, B_odd_flag = load_B_data_and_offset(vector_B_idx, x_B_idx, ptr_B_POS, B_odd_flag, COLS)
             code_str += code_str_b
     logger.debug("进入了B矩阵数据加载...完成")

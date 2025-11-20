@@ -6,6 +6,7 @@ from micro_kernel_common import get_simd_col
 from micro_kernel_common import get_last_simd_col
 from micro_kernel_common import compute_fmul
 from micro_kernel_common import compute_fmla
+from micro_kernel_common import get_permuted_line
 
 def micro_kernel_main_computing(line, col,
                                 UNROLL_NR,
@@ -55,7 +56,7 @@ def micro_kernel_main_computing(line, col,
                     (not is_last_k and mod_simd_lane_loop_id == UNROLL_LANE - 1)
                 )
             ):
-                actual_line = (line + VEC_REG_A_LEN % real_lines) % real_lines
+                actual_line = get_permuted_line(line, real_lines, VEC_REG_A_LEN)
                 # 若VEC_REG_A_LEN = real_lines，则这里等价于
                 # line = line % real_lines = line
                 # 若VEC_REG_A_LEN < real_lines，则这里等价于
