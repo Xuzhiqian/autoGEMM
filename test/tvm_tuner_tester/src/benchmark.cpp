@@ -9,7 +9,7 @@
 #include "tvm/runtime/packed_func.h"
 #include "tvm/runtime/registry.h"
 
-#include "kernel_params_list.hpp"
+#include "../../../src/blas_wrapper/kernel_params_list.hpp"
 #include "./test.h"
 #include "./timer.h"
 
@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
     string func_name = "OP_" + base_name;
     string pack_func_name = func_name + "_packB";
 
-    tvm::runtime::Module mod_tvmlib = tvm::runtime::Module::LoadFromFile("../build/library/" + mod_name);
+    tvm::runtime::Module mod_tvmlib = tvm::runtime::Module::LoadFromFile("../../../data/tune_output/build/library/" + mod_name);
     // tvm::runtime::Module mod_tvmlib = (*tvm::runtime::Registry::Get("runtime.SystemLib"))();
 
     tvm::runtime::PackedFunc pack_func = mod_tvmlib.GetFunction(pack_func_name);
@@ -140,7 +140,9 @@ int main(int argc, char* argv[]) {
 
     free(A);
     free(B);
+    free(packedB);
     free(C);
+    free(refC);
 
     return 0;
 }
