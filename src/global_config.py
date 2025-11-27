@@ -23,6 +23,7 @@ SIMD_BYTES = SIMD_BITS // 8
 FLOAT_BYTES = FLOAT_BITS // 8
 SIMD_LANE = SIMD_BITS // FLOAT_BITS
 
+# A Matrix unrolling lane on SIMD registers
 UNROLL_LANE = SIMD_LANE # NEON
 if SIMD == "SVE":
     # UNROLL_LANE = 1 # Choose by users for now

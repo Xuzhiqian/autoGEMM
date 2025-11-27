@@ -1,6 +1,12 @@
 from global_config import *
+from micro_kernel_common import get_vector_A_idx
+from micro_kernel_common import get_vector_B_idx
 from micro_kernel_common import get_vector_C_idx
+from micro_kernel_common import get_simd_col
 from micro_kernel_common import get_last_simd_col
+from micro_kernel_common import compute_fmul
+from micro_kernel_common import compute_fmla
+from micro_kernel_common import get_permuted_line
 
 def micro_kernel_main_computing(line, col,
                                 UNROLL_NR,
@@ -26,17 +32,11 @@ def micro_kernel_main_computing(line, col,
         for j in range(UNROLL_NR):
             last_simd_col = get_last_simd_col(col, UNROLL_NR, j)
             if line < real_lines and last_simd_col < real_cols:
-                vector_C_idx = get_vector_C_idx(line, col, UNROLL_NR, j, COLS)
-                vector_B_idx = vector_id_array_B[vector_scroll_B[col * UNROLL_NR + j]]
-                vector_A_idx = vector_scroll_A[A_odd_flag][line]
-                if SIMD == "NEON":
-                    code_str += f"    \"fmul    v{vector_C_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_B_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_A_idx}.{VEC_SIGN}[{mod_simd_lane_loop_id}]             \\n\"\n"
-                if SIMD == "SVE":
-                    vector_C_idx = VEC_REG_A_LEN + VEC_REG_B_LEN + get_vector_C_idx(line, col, UNROLL_NR, j, COLS)
-                    if UNROLL_LANE == 1:
-                        code_str += f"    \"fmul    z{vector_C_idx}.{VEC_SIGN}, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
-                    else:
-                        code_str += f"    \"fmul    z{vector_C_idx}.{VEC_SIGN}, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}[{mod_simd_lane_loop_id}]             \\n\"\n"
+                vector_C_idx = get_vector_C_idx(line, col, UNROLL_NR, j, COLS, VEC_REG_A_LEN, VEC_REG_B_LEN)
+                simd_col = get_simd_col(col, UNROLL_NR, j)
+                vector_B_idx = get_vector_B_idx(simd_col, vector_id_array_B, vector_scroll_B)
+                vector_A_idx = get_vector_A_idx(line, A_odd_flag, vector_scroll_A)
+                code_str += compute_fmul(vector_A_idx, vector_B_idx, vector_C_idx, mod_simd_lane_loop_id)
         return code_str
 
     logger.debug(f"UNROLL_NR = {UNROLL_NR}")
@@ -56,7 +56,7 @@ def micro_kernel_main_computing(line, col,
                     (not is_last_k and mod_simd_lane_loop_id == UNROLL_LANE - 1)
                 )
             ):
-                actual_line = (line + VEC_REG_A_LEN % real_lines) % real_lines
+                actual_line = get_permuted_line(line, real_lines, VEC_REG_A_LEN)
                 # 若VEC_REG_A_LEN = real_lines，则这里等价于
                 # line = line % real_lines = line
                 # 若VEC_REG_A_LEN < real_lines，则这里等价于
@@ -65,18 +65,9 @@ def micro_kernel_main_computing(line, col,
             code_str += f"\"\\n\" // actual_line = {actual_line}\n"
             logger.debug(f"vector_scroll_A = {vector_scroll_A}")
             code_str += f"\"\\n\" // vector_scroll_A = {vector_scroll_A}\n"
-            vector_C_idx = get_vector_C_idx(actual_line, col, UNROLL_NR, j, COLS)
-            vector_B_idx = vector_id_array_B[vector_scroll_B[col * UNROLL_NR + j]]
-            vector_A_idx = vector_scroll_A[A_odd_flag][actual_line]
-            if SIMD == "NEON":
-                code_str += f"    \"fmla    v{vector_C_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_B_idx}.{SIMD_LANE}{VEC_SIGN}, v{vector_A_idx}.{VEC_SIGN}[{mod_simd_lane_loop_id}]             \\n\"\n"
-            if SIMD == "SVE":
-                vector_C_idx = VEC_REG_A_LEN + VEC_REG_B_LEN + get_vector_C_idx(actual_line, col, UNROLL_NR, j, COLS)
-                if UNROLL_LANE == 1:
-                    if last_simd_col + SIMD_LANE <= real_cols:
-                        code_str += f"    \"fmla    z{vector_C_idx}.{VEC_SIGN}, p0/m, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
-                    else:
-                        code_str += f"    \"fmla    z{vector_C_idx}.{VEC_SIGN}, p1/m, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}             \\n\"\n"
-                else:
-                    code_str += f"    \"fmla    z{vector_C_idx}.{VEC_SIGN}, z{vector_B_idx}.{VEC_SIGN}, z{vector_A_idx}.{VEC_SIGN}[{mod_simd_lane_loop_id}]             \\n\"\n"
+            vector_C_idx = get_vector_C_idx(actual_line, col, UNROLL_NR, j, COLS, VEC_REG_A_LEN, VEC_REG_B_LEN)
+            simd_col = get_simd_col(col, UNROLL_NR, j)
+            vector_B_idx = get_vector_B_idx(simd_col, vector_id_array_B, vector_scroll_B)
+            vector_A_idx = get_vector_A_idx(actual_line, A_odd_flag, vector_scroll_A)
+            code_str += compute_fmla(vector_A_idx, vector_B_idx, vector_C_idx, mod_simd_lane_loop_id, last_simd_col, real_cols)
     return code_str

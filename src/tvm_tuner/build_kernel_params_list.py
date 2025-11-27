@@ -1,13 +1,20 @@
 import sys
 import os
 import json
+import argparse
 
-def main():
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scheduler_log", type=str, required=True, help="scheduler_summary.log")
+    args = parser.parse_args()
+
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_dir = os.path.abspath(os.path.join(script_dir, "../../../"))
+    project_dir = os.path.abspath(os.path.join(script_dir, "../../"))
     print(f"Project root in build_kernel_params_list: {project_dir}")
-    input_file_path = os.path.join(project_dir, f"build/scheduler_summary.log")
-    output_file_path = os.path.join(project_dir, "src/kernel_params_list.hpp")
+    input_file_path = args.scheduler_log
+    print(f"input_file_path in build_kernel_params_list: {input_file_path}")
+    output_file_path = os.path.join(project_dir, f"src/blas_wrapper/kernel_params_list.hpp")
+    print(f"output_file_path in build_kernel_params_list: {output_file_path}")
 
     if not os.path.exists(input_file_path):
         exit(-1)
@@ -46,7 +53,3 @@ namespace KernelParams
     f = open(output_file_path, 'w')
     f.write(cc_code)
     f.close()
-
-
-if __name__ == "__main__":
-    main()
