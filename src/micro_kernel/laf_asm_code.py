@@ -54,7 +54,7 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
     code_str += f"    \"mov     {C_Head}, %[C]                  \\n\" // {C_Head}存储C头指针\n"
     code_str += "\"\\n\" // 进入了整个small_gemm的初始化...完成\n"
 
-    if NR_MAIN_LOOPS : # 主循环，对B、C矩阵来说就是处理了SIMD_LANE * NR_MAIN * sizeof(float)的宽度
+    if NR_MAIN_LOOPS: # 主循环，对B、C矩阵来说就是处理了SIMD_LANE * NR_MAIN * sizeof(float)的宽度
         code_str += "\"\\n\" // 进入了N方向主循环...\n"
         code_str += n_dim_func_asm(
             min(N, SIMD_LANE * NR_MAIN * NR_MAIN_LOOPS), # 在N和SIMD_LANE * NR_MAIN * NR_MAIN_LOOPS中取最小值，因为可能N大于SIMD_LANE * NR_MAIN * NR_MAIN_LOOPS
@@ -67,13 +67,15 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, 
         )
         code_str += "\"\\n\" // 进入了N方向主循环...完成\n"
 
-    if NR_REMAIN_LOOPS : # 剩余循环
+    if NR_REMAIN_LOOPS:
         code_str += "\"\\n\" // 进入了N方向剩余循环...\n"
-        if NR_MAIN_LOOPS: # 处理主循环和剩余循环之间的变化
+        if NR_MAIN_LOOPS:
+            code_str += "\"\\n\" // 处理N方向主循环和剩余循环之间的变化...\n"
             code_str += f"    \"mov     {A_Head}, %[A]                 \\n\" // {A_Head}恢复为A头指针\n"
             code_str += f"    \"add     %[B], %[B], #{SIMD_LANE * NR_MAIN * FLOAT_BYTES}                 \\n\" // # B指针跳到SIMD_LANE * NR_MAIN * FLOAT_BYTES的位置\n" 
             code_str += f"    \"add     %[C], %[C], #{SIMD_LANE * NR_MAIN * FLOAT_BYTES}                 \\n\" // # C指针跳到SIMD_LANE * NR_MAIN * FLOAT_BYTES的位置\n"
             code_str += f"    \"mov     {C_Head}, %[C]                 \\n\" // {C_Head}恢复为C头指针\n"
+            code_str += "\"\\n\" // 处理N方向主循环和剩余循环之间的变化...完成\n"
         code_str += n_dim_func_asm(
             N - SIMD_LANE * NR_MAIN * NR_MAIN_LOOPS, # 剩余循环所要处理的N
             K, UNROLL_K,

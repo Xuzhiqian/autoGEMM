@@ -8,7 +8,10 @@ from tvm.autotvm.task import ConfigEntity
 import numpy as np
 from template.asm_micro_kernel_template import matmul
 
+from global_config import logger
+
 def evaluate(M, K, N, record_file, parallel, pack_dso, target="llvm"):
+    print(f"Applying best history of MxNxK = {M}x{N}x{K} from {record_file}")
     ctx = tvm.cpu(0)
     dtype = "float32"
 
@@ -16,7 +19,7 @@ def evaluate(M, K, N, record_file, parallel, pack_dso, target="llvm"):
         with tvm.target.Target(target):
             s, arg_buf = matmul(M, K, N, parallel)
             func = tvm.build(s, arg_buf, name="OP_GEMM_%dX%dX%d" % (M, N, K), target=tvm.target.Target(target))
-            # print(tvm.lower(s, arg_buf))
+            logger.debug(tvm.lower(s, arg_buf))
 
             a = tvm.nd.array(np.random.uniform(-1, 1, size=(M, K)).astype(dtype), ctx)
             b = tvm.nd.array(np.random.rand(K, N).astype(dtype), ctx)
@@ -27,11 +30,13 @@ def evaluate(M, K, N, record_file, parallel, pack_dso, target="llvm"):
             )
             tgt = tvm.target.Target.current()
             cfg = autotvm.task.DispatchContext.current.query(tgt, workload)
+            logger.debug(f"best_cfg = {cfg}")
 
             padding_size = cfg["padding_size"].val
             bn = cfg["tile_y"].size[-1]
             kn = cfg["tile_k"].size[-1]
-            bn_ceil = ((bn - 1) // padding_size + 1) * padding_size
+            bn_ceil = ((bn - 1) // padding_size + 1) * padding_size # ceil(bn / padding_size) * padding_size
+            logger.debug(f"bn = {bn}, kn = {kn}, bn_ceil = {bn_ceil}")
 
             B = te.placeholder((K, N), name="B")
             PackedB = te.compute(
@@ -49,7 +54,7 @@ def evaluate(M, K, N, record_file, parallel, pack_dso, target="llvm"):
                 parallel_axis = packb_schedule[PackedB].fuse(bigK, bigN)
                 packb_schedule[PackedB].parallel(parallel_axis)
             packb_func = tvm.build(packb_schedule, [B, PackedB], name="OP_GEMM_%dX%dX%d_packB" % (M, N, K), target=target)
-            # print(tvm.lower(packb_schedule, [B, PackedB]))
+            logger.debug(tvm.lower(packb_schedule, [B, PackedB]))
 
             packb_func(b, packed_b)
             func(a, packed_b, c)
@@ -62,7 +67,7 @@ def evaluate(M, K, N, record_file, parallel, pack_dso, target="llvm"):
     gflops = 2 * M * N * K * 1e-9 / mean_time
 
     print("TVM offline GFLOPS: %f, avg time: %f ms" % (gflops, mean_time * 1000))
-    print(f"pack_dso is {pack_dso}")
+    logger.debug(f"pack_dso is {pack_dso}")
 
     if pack_dso:
         current_directory = os.path.dirname(os.path.abspath(__file__))

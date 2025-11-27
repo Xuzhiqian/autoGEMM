@@ -10,6 +10,7 @@ import string
 import argparse
 import numpy as np
 
+from global_config import SIMD
 from template.asm_micro_kernel_template import matmul
 from utils_func.evaluate import evaluate
 
@@ -34,6 +35,6 @@ if __name__ == "__main__":
         target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+neon"
     elif SIMD == "SVE" :
         target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+sve"
-        
-    # print('%d, %d, %d' % (M, N, K))
+
+    print('%d, %d, %d' % (M, N, K))
     evaluate(M, K, N, best_schedule_file, parallel, pack_dso=True, target=target)

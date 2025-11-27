@@ -105,6 +105,7 @@ def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, unroll_k, nr_main, MRSA_FLAG, uniq_i
     from gen_xsmm_asm_armv8_code import xsmm_asm_armv8_code
 
     # Create c source code
+    print(f"micro_kernel({M}, {N}, {K}, {lda}, {ldb}, {ldc}, {unroll_k}, {nr_main}, {MRSA_FLAG}, {uniq_id})")
     cc_code = xsmm_asm_armv8_code(M, K, N, lda, ldb, ldc, unroll_k, nr_main, MRSA_FLAG, uniq_id)
     
     temp = utils.tempdir()
