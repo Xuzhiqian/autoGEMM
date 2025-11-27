@@ -8,8 +8,9 @@ cd ${PROJECT_ROOT}
 echo "Project root: $PROJECT_ROOT"
 WORKING_DIR=$PROJECT_ROOT/data/tune_output
 echo "Working dir: $WORKING_DIR"
+day=$(date "+%Y%m%d")
 time=$(date "+%Y%m%d%H%M%S")
-STORING_DIR=$PROJECT_ROOT/data/scheduler_house/dlrm/$time
+STORING_DIR=$PROJECT_ROOT/data/scheduler_house/dlrm/$day/$time
 
 # parameter setting
 arch=$1
@@ -28,13 +29,21 @@ fi
 export OMP_NUM_THREADS=${threads}
 
 # save MNK to file for further opt
-# M=(128  128  128 128 128  128)
-# N=(3456 512  13  256 3456 512)
-# K=(512  3456 512 128 1    256)
+# M=(128  128  128 128 128  128 512)
+# N=(3456 512  13  256 3456 512 512)
+# K=(512  3456 512 128 1    256 3456)
 
-M=(128 )
-N=(3456)
-K=(512 )
+M=(128  512)
+N=(512  512)
+K=(3456 3456)
+
+# M=(128)
+# N=(13 )
+# K=(512)
+
+# M=(128 )
+# N=(3456)
+# K=(512 )
 
 # M=(128)
 # N=(512)
