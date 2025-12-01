@@ -8,6 +8,7 @@ cd ${PROJECT_ROOT}
 echo "Project root: $PROJECT_ROOT"
 tune_output_path=$PROJECT_ROOT/data/tune_output
 src_path=$PROJECT_ROOT/src
+build_output_path=$tune_output_path/build
 
 # parameter setting
 arch=$1
@@ -26,6 +27,9 @@ fi
 export OMP_NUM_THREADS=${threads}
 
 mkdir -p $tune_output_path
+if [[ -d "$tune_output_path/build" ]]; then
+    rm -rf $tune_output_path/build
+fi
 if [[ -d "$tune_output_path/perf" ]]; then
     rm -rf $tune_output_path/perf
 fi
@@ -38,6 +42,10 @@ fi
 if [[ -f "$tune_output_path/tune.over" ]]; then
     rm -rf $tune_output_path/tune.over
 fi
+mkdir -p $tune_output_path/build
+mkdir -p $tune_output_path/build/gemm_obj
+mkdir -p $tune_output_path/build/generated_micro_kernel
+mkdir -p $tune_output_path/build/library
 mkdir -p $tune_output_path/perf
 mkdir -p $tune_output_path/log
 
@@ -52,7 +60,7 @@ tune_scheduler_path=$PROJECT_ROOT/src/tvm_tuner/tune_scheduler.py
 matmul_log_path=$tune_output_path/matmul.log
 matmul_log_tmp_path=$tune_output_path/matmul.log.tmp
 summarize_scheduler_path=$PROJECT_ROOT/src/tvm_tuner/summarize_scheduler.py
-summary_log_path=$tune_output_path/scheduler_summary.log
+scheduler_log=$tune_output_path/scheduler_summary.log
 cat $MNK_file | while read line
 do
     M=`echo $line | awk '{print $1}'`
@@ -62,8 +70,13 @@ do
     log_result_path=$tune_output_path/log/${cnt}_matmul_${M}_${N}_${K}.log
     python ${tune_scheduler_path} -m ${M} -n ${N} -k ${K} -a ${arch} ${parallel} -s ${tune_num} -r $matmul_log_path > $perf_result_path
     cp $matmul_log_tmp_path $log_result_path
-    python $summarize_scheduler_path --input $matmul_log_path --output $summary_log_path
+    python $summarize_scheduler_path --input $matmul_log_path --output $scheduler_log
     let cnt+=1
 done
+
+scheduler_log_output=$build_output_path/scheduler_summary.log
+build_kernel_params_list_path=$PROJECT_ROOT/src/tvm_tuner/build_kernel_params_list.py
+python $summarize_scheduler_path --input $scheduler_log --output $scheduler_log_output
+python $build_kernel_params_list_path --scheduler_log $scheduler_log_output
 
 touch $tune_output_path/tune.over
