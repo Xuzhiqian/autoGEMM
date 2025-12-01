@@ -6,8 +6,12 @@ from tvm import autotvm
 from tvm.autotvm.task import ConfigEntity
 from template.tvm_extern_asm_micro_kernel import intrin_gemm_MxKxN, gemm_MxKxN_impl
 
+from tvm.contrib import tedd
+from IPython.display import display_svg
+
 @autotvm.template("matmul")
 def matmul(M, K, N, parallel):
+    print(f"matmul({M}, {K}, {N}, {parallel})")
     cfg = autotvm.get_config()
 
     # Tiling structure: split M/N/K into 3 axes each.
@@ -40,6 +44,8 @@ def matmul(M, K, N, parallel):
 
     k = te.reduce_axis((0, K), "k")
 
+    print(f"PackedB({K // kn}, {N // bn}, {kn}, {bn_ceil})")
+
     # C = A x PackedB:
     C = te.compute(
         (M, N),
@@ -55,7 +61,10 @@ def matmul(M, K, N, parallel):
     xt, xo, xi = cfg["tile_x"].apply(s, C, x)
     yt, yo, yi = cfg["tile_y"].apply(s, C, y)
     kt, ko, ki = cfg["tile_k"].apply(s, C, k)
-
+    # print(f"xt, xo, xi = {xt, xo, xi}")
+    # print(f"yt, yo, yi = {yt, yo, yi}")
+    # print(f"kt, ko, ki = {kt, ko, ki}")
+    
     # Make (yi, xi, ki) the inner most axes, to be tensorized later.
     s[C].reorder(yt, kt, xt, yo, ko, xo, yi, xi, ki)
 
@@ -89,6 +98,7 @@ def matmul(M, K, N, parallel):
                                 N,
                                 )
     s[C].tensorize(yi, micro_kernel)
+    graph = tedd.viz_dataflow_graph(s, show_svg=True, dot_file_path=f"/home/linzuxuan/autoGEMM/autoGEMM/data/figure/{M}_{N}_{K}.dot")
     s[C].pragma(pragma_axis, "import_llvm", gemm_MxKxN_impl(
                                 cfg["tile_x"].size[-1], # 最小层级的M
                                 cfg["tile_k"].size[-1], # 最小层级的K

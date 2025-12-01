@@ -6,7 +6,14 @@ tmp=`dirname $0`
 PROJECT_ROOT=`cd $tmp/../../../..; pwd`
 cd ${PROJECT_ROOT}
 echo "Project root: $PROJECT_ROOT"
-tune_output_path=$PROJECT_ROOT/data/tune_output
+app="dlrm"
+# day="20251121"
+# time="20251120165501" # neon
+# time="20251121161600" # sve
+day="20251126"
+# time="20251126165559" # 第一次ncopy调优：100次
+time="20251126171752" # 第二次ncopy调优： 1000次
+tune_output_path=$PROJECT_ROOT/data/scheduler_house/$app/$day/$time
 src_path=$PROJECT_ROOT/src
 build_output_path=$tune_output_path/build
 
@@ -44,21 +51,24 @@ export TVM_CC=clang++
 summarize_scheduler_path=$PROJECT_ROOT/src/tvm_tuner/summarize_scheduler.py
 build_kernel_params_list_path=$PROJECT_ROOT/src/tvm_tuner/build_kernel_params_list.py
 python $summarize_scheduler_path --input $scheduler_log --output $scheduler_log_output
-python $build_kernel_params_list_path
+python $build_kernel_params_list_path --scheduler_log $scheduler_log_output
 
 tester_src_path=$PROJECT_ROOT/test/tvm_tuner_tester/src
-cd $src_path
+cd $tester_src_path
 make -s
 
 evaluate_scheduler_path=$PROJECT_ROOT/src/tvm_tuner/evaluate_scheduler.py
 benchmark_kernel_path=$tester_src_path/benchmark_kernel
+echo "benchmark_kernel_path: $benchmark_kernel_path"
 cnt=0
 cat $MNK_file | while read line
 do
     M=`echo $line | awk '{print $1}'`
     N=`echo $line | awk '{print $2}'`
     K=`echo $line | awk '{print $3}'`
-    python $evaluate_scheduler -m ${M} -n ${N} -k ${K} -a ${arch} ${parallel} --scheduler_log ${PROJECT_ROOT}/${scheduler_log_output}
+    python $evaluate_scheduler_path -m ${M} -n ${N} -k ${K} -a ${arch} ${parallel} --scheduler_log ${scheduler_log_output}
+    # ldd $benchmark_kernel_path
+    # LD_PRELOAD=/usr/lib64/libasan.so.8 $benchmark_kernel_path ${M} ${N} ${K} ${repeats}
     $benchmark_kernel_path ${M} ${N} ${K} ${repeats}
     let cnt+=1
 done

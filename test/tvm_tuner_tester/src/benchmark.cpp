@@ -9,7 +9,7 @@
 #include "tvm/runtime/packed_func.h"
 #include "tvm/runtime/registry.h"
 
-#include "../../../src/blas_wrapper/kernel_params_list.hpp"
+#include "../../../src/blas_wrapper/include/kernel_params_list.hpp"
 #include "./test.h"
 #include "./timer.h"
 

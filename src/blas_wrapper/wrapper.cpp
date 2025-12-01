@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include <filesystem>
 
-#include "dlpack/dlpack.h"
 #include "tvm/runtime/module.h"
 #include "tvm/runtime/packed_func.h"
 #include "tvm/runtime/registry.h"
@@ -60,9 +59,10 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
       }
     }
 
-    // printf("nc = %d, kc = %d, padding_size = %d", nc, kc, padding_size);
-
     int nc_ceil = ((nc - 1) / padding_size + 1) * padding_size;
+
+    // printf("m = %d, n = %d, k = %d, nc = %d, kc = %d, padding_size = %d， nc_ceil = %d\n", m, n, k, nc, kc, padding_size, nc_ceil);
+    // printf("Allocating packedB size = %lu Bytes\n", K * (N/nc) * nc_ceil * sizeof(float));
 
     float *packedB = static_cast<float*>(_mm_malloc(64, K * (N/nc) * nc_ceil * sizeof(float)));
 
@@ -77,15 +77,16 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
     tvm::runtime::PackedFunc pack_func = mod_tvmlib.GetFunction(pack_func_name);
     tvm::runtime::PackedFunc func = mod_tvmlib.GetFunction(func_name);
 
-    DLTensor*   tvm_A;
-    DLTensor*   tvm_B;
-    DLTensor*   tvm_packedB;
-    DLTensor*   tvm_C;
+    // printf("Begin allocating DLTensors\n");
+    DLTensor tvm_A;
+    DLTensor tvm_B;
+    DLTensor tvm_packedB;
+    DLTensor tvm_C;
 
-    const int64_t A_shape[2] = {M, K};
-    const int64_t B_shape[2] = {K, N};
-    const int64_t packedB_shape[4] = {K / kc, N / nc, kc, nc_ceil};
-    const int64_t C_shape[2] = {M, N};
+    int64_t A_shape[] = {M, K};
+    int64_t B_shape[] = {K, N};
+    int64_t packedB_shape[] = {K / kc, N / nc, kc, nc_ceil};
+    int64_t C_shape[] = {M, N};
 
     const int dtype_code = kDLFloat;
     const int dtype_bits = 32;
@@ -93,20 +94,71 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
     const int device_type = kDLCPU;
     const int device_id = 0;
 
-    TVMArrayAlloc(A_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_A);
-    TVMArrayAlloc(B_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_B);
-    TVMArrayAlloc(packedB_shape, 4, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_packedB);
-    TVMArrayAlloc(C_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_C);
+    // TVMArrayAlloc(A_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_A);
+    // TVMArrayAlloc(B_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_B);
+    // TVMArrayAlloc(packedB_shape, 4, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_packedB);
+    // TVMArrayAlloc(C_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_C);
 
-    tvm_A->data = (void *)a;
-    tvm_B->data = (void *)b;
-    tvm_packedB->data = packedB;
-    tvm_C->data = (void *)c;
+    // printf("tvm_A.data = %p, tvm_B.data = %p, tvm_packedB.data = %p, tvm_C.data = %p\n", tvm_A.data, tvm_B.data, tvm_packedB.data, tvm_C.data);
 
-    pack_func(tvm_B, tvm_packedB);
-    func(tvm_A, tvm_packedB, tvm_C);
+    DLDataType dtype = {kDLFloat, dtype_bits, dtype_lanes};
+    DLDevice device = {kDLCPU, device_id};
+
+    // printf("Setting device\n");
+    tvm_A.device = device;
+    tvm_B.device = device;
+    tvm_packedB.device = device;
+    tvm_C.device = device;
+
+    // printf("Setting dtype\n");
+    tvm_A.dtype = dtype;
+    tvm_B.dtype = dtype;
+    tvm_packedB.dtype = dtype;
+    tvm_C.dtype = dtype;
+
+    // printf("Setting ndim\n");
+    tvm_A.ndim = 2;
+    tvm_B.ndim = 2;
+    tvm_packedB.ndim = 4;
+    tvm_C.ndim = 2;
+
+    // printf("Setting shape\n");
+    tvm_A.shape = A_shape;
+    tvm_B.shape = B_shape;
+    tvm_packedB.shape = packedB_shape;
+    tvm_C.shape = C_shape;
+
+    // printf("Setting data\n");
+    tvm_A.data = (void *)a;
+    tvm_B.data = (void *)b;
+    tvm_packedB.data = packedB;
+    tvm_C.data = (void *)c;
+
+    tvm_A.strides = nullptr;
+    tvm_B.strides = nullptr;
+    tvm_packedB.strides = nullptr;
+    tvm_C.strides = nullptr;
+
+    tvm_A.byte_offset = 0;
+    tvm_B.byte_offset = 0;
+    tvm_packedB.byte_offset = 0;
+    tvm_C.byte_offset = 0;
+
+    // printf("packed_func and func executing\n");
+    pack_func(&tvm_B, &tvm_packedB);
+    func(&tvm_A, &tvm_packedB, &tvm_C);
+    // printf("packed_func and func execution done\n");
+
+    // pack_func(b, packedB);
+    // func(a, packedB, c);
 
     free(packedB);
+    // printf("Free packedB size = %lu Bytes\n", K * (N/nc) * nc_ceil * sizeof(float));
+
+    // TVMArrayFree(tvm_A);
+    // TVMArrayFree(tvm_B);
+    // TVMArrayFree(tvm_packedB);
+    // TVMArrayFree(tvm_C);
 }
 
 #endif

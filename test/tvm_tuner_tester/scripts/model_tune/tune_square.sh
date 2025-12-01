@@ -8,8 +8,9 @@ cd ${PROJECT_ROOT}
 echo "Project root: $PROJECT_ROOT"
 WORKING_DIR=$PROJECT_ROOT/data/tune_output
 echo "Working dir: $WORKING_DIR"
+day=$(date "+%Y%m%d")
 time=$(date "+%Y%m%d%H%M%S")
-STORING_DIR=$PROJECT_ROOT/data/scheduler_house/square/$time
+STORING_DIR=$PROJECT_ROOT/data/scheduler_house/square/$day/$time
 
 # parameter setting
 arch=$1

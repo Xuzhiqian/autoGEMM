@@ -99,15 +99,19 @@ def n_dim_func_asm(
     code_str += f"\"\\n\" // lines_branch_2: {lines_branch_2}\n"
     logger.debug(f"cols_branch_1: {cols_branch_1} (N方向的参数， 如果是N方向主循环，则为SIMD_LANE * NR)")
     logger.debug(f"cols_branch_2: {cols_branch_2} (N方向的参数， 如果不是N方向剩余循环，则为SIMD_LANE * NR)")
+    code_str += f"\"\\n\" // cols_branch_1: {cols_branch_1}\n"
+    code_str += f"\"\\n\" // cols_branch_2: {cols_branch_2}\n"
     # 这几个参数的使用也不太明确，下面用到的调用有
     # compile_time_for_init_func_asm
     # compile_time_for_n_dim_micro_kernel_pipeline_func_asm
     # compile_time_for_loop_k_end_func_asm
     
+    code_str += f"\"\\n\" // SVE版本对p寄存器的设置...\n"
     if SIMD == "SVE":
         code_str += f"    \"ptrue     p0.{VEC_SIGN}                  \\n\"\n"
         code_str += f"    \"mov       x28, #{SIMD_LANE if REMAIN_N % SIMD_LANE == 0 else REMAIN_N % SIMD_LANE}                  \\n\"\n"
         code_str += f"    \"whilelt   p1.{VEC_SIGN}, xzr, x28                  \\n\"\n"
+    code_str += f"\"\\n\" // SVE版本对p寄存器的设置...完成\n"
     code_str += compile_time_for_init_func_asm(
         MR_MAIN, NR, 
         lines_branch_1, cols_branch_1,
