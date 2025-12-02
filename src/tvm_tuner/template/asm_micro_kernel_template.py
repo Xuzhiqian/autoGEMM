@@ -10,8 +10,8 @@ from tvm.contrib import tedd
 from IPython.display import display_svg
 
 @autotvm.template("matmul")
-def matmul(M, K, N, parallel):
-    print(f"matmul({M}, {K}, {N}, {parallel})")
+def matmul(M, N, K, parallel):
+    print(f"matmul({M}, {N}, {K}, {parallel})")
     cfg = autotvm.get_config()
 
     # Tiling structure: split M/N/K into 3 axes each.
@@ -23,6 +23,7 @@ def matmul(M, K, N, parallel):
     cfg.define_knob("nr_main_knob", [3, 4, 5])
     cfg.define_knob("MRSA_FLAG", [0, 1])
     cfg.define_knob("unroll_k_knob", [UNROLL_LANE * 2, UNROLL_LANE * 4, UNROLL_LANE * 8])
+    cfg.define_knob("pipeline_strategy_level_knob", [0, 1, 2, 3])
     if SIMD == "NEON" :
         cfg.define_knob("padding_size", [1, 4])
     elif SIMD == "SVE" :
@@ -91,8 +92,8 @@ def matmul(M, K, N, parallel):
     # Inner kernel implementation for the tensorization.
     micro_kernel, uniq_id = intrin_gemm_MxKxN(
                                 cfg["tile_x"].size[-1],
-                                cfg["tile_k"].size[-1], 
                                 cfg["tile_y"].size[-1],
+                                cfg["tile_k"].size[-1],
                                 K,
                                 bn_ceil,
                                 N,
@@ -101,11 +102,12 @@ def matmul(M, K, N, parallel):
     graph = tedd.viz_dataflow_graph(s, show_svg=True, dot_file_path=f"/home/linzuxuan/autoGEMM/autoGEMM/data/figure/{M}_{N}_{K}.dot")
     s[C].pragma(pragma_axis, "import_llvm", gemm_MxKxN_impl(
                                 cfg["tile_x"].size[-1], # 最小层级的M
-                                cfg["tile_k"].size[-1], # 最小层级的K
                                 cfg["tile_y"].size[-1], # 最小层级的N
+                                cfg["tile_k"].size[-1], # 最小层级的K
                                 K,       # lda
                                 bn_ceil, # ldb
                                 N,       # ldc
+                                cfg["pipeline_strategy_level_knob"].val,
                                 cfg["unroll_k_knob"].val,
                                 cfg["nr_main_knob"].val,
                                 cfg["MRSA_FLAG"].val,

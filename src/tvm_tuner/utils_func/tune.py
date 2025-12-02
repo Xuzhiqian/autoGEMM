@@ -14,8 +14,8 @@ logging.getLogger("autotvm").addHandler(logging.StreamHandler(sys.stdout))
 
 def tune(
     M,
-    K,
     N,
+    K,
     record_file,
     parallel, 
     n_trial=2500,
@@ -30,7 +30,7 @@ def tune(
         os.remove(record_file)
 
     task = autotvm.task.create(
-        "matmul", args=[M, K, N, parallel], target=target
+        "matmul", args=[M, N, K, parallel], target=target
     )
     logger.info(task.config_space)
 

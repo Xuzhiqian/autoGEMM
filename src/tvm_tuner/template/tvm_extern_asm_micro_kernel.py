@@ -9,7 +9,7 @@ import string
 from config.common_config import cc_compiler
 
 class GemmTensorIntrin(object):
-    def __init__(self, M, K, N, lda, ldb, ldc, uniq_id, ins=None, outs=None):
+    def __init__(self, M, N, K, lda, ldb, ldc, uniq_id, ins=None, outs=None):
         self.M = M
         self.N = N
         self.K = K
@@ -28,7 +28,7 @@ class GemmTensorIntrin(object):
         ib.emit(
             tvm.tir.call_extern(
                 "int32",
-                f"gemm_{self.M}x{self.K}x{self.N}_{self.lda}_{self.ldb}_{self.ldc}_xsmm_{self.uniq_id}",
+                f"gemm_{self.M}x{self.N}x{self.K}_{self.lda}_{self.ldb}_{self.ldc}_xsmm_{self.uniq_id}",
                 self.ins[0].access_ptr("r"),
                 self.ins[1].access_ptr("r"),
                 self.outs[0].access_ptr("w"),
@@ -47,7 +47,7 @@ class GemmTensorIntrin(object):
         ib.emit(
             tvm.tir.call_extern(
                 "int32",
-                f"gemm_{self.M}x{self.K}x{self.N}_{self.lda}_{self.ldb}_{self.ldc}_xsmm_with_bias_{self.uniq_id}",
+                f"gemm_{self.M}x{self.N}x{self.K}_{self.lda}_{self.ldb}_{self.ldc}_xsmm_with_bias_{self.uniq_id}",
                 self.ins[0].access_ptr("r"),
                 self.ins[1].access_ptr("r"),
                 self.outs[0].access_ptr("w"),
@@ -63,7 +63,7 @@ class GemmTensorIntrin(object):
 
 
 
-def intrin_gemm_MxKxN(M, K, N, lda, ldb, ldc):
+def intrin_gemm_MxKxN(M, N, K, lda, ldb, ldc):
     """Defines a SIMD-accelerated transposed matmul."""
     # we generate a unique ID for every intrinsic definition, to prevent name
     # collisions in the generated source (e.g., if there are multiple operators
@@ -94,19 +94,19 @@ def intrin_gemm_MxKxN(M, K, N, lda, ldb, ldc):
     }
 
     def intrin_func(ins, outs):
-        intrin = GemmTensorIntrin(M, K, N, lda, ldb, ldc, uniq_id, ins, outs)
+        intrin = GemmTensorIntrin(M, N, K, lda, ldb, ldc, uniq_id, ins, outs)
         return intrin.body()
 
     intrin_decl = te.decl_tensor_intrin(c.op, intrin_func, binds=bind_map)
     return intrin_decl, uniq_id
 
 
-def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, unroll_k, nr_main, MRSA_FLAG, uniq_id):
+def gemm_MxKxN_impl(M, N, K, lda, ldb, ldc, pipeline_strategy_level, unroll_k, nr_main, MRSA_FLAG, uniq_id):
     from gen_xsmm_asm_armv8_code import xsmm_asm_armv8_code
 
     # Create c source code
-    print(f"micro_kernel({M}, {N}, {K}, {lda}, {ldb}, {ldc}, {unroll_k}, {nr_main}, {MRSA_FLAG}, {uniq_id})")
-    cc_code = xsmm_asm_armv8_code(M, K, N, lda, ldb, ldc, unroll_k, nr_main, MRSA_FLAG, uniq_id)
+    print(f"micro_kernel({M}, {N}, {K}, {lda}, {ldb}, {ldc}, {pipeline_strategy_level}, {unroll_k}, {nr_main}, {MRSA_FLAG}, {uniq_id})")
+    cc_code = xsmm_asm_armv8_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, unroll_k, nr_main, MRSA_FLAG, uniq_id)
     
     temp = utils.tempdir()
     ll_path = temp.relpath("temp.ll")

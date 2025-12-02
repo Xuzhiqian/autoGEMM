@@ -50,7 +50,7 @@ def compile_time_for_store(M, N, K, ROWS, COLS):
         code_str += f"    vst1q_f32(C + {row} * ldc + {col} * 4, vc[{row*COLS+col}]);\n"
     return code_str
 
-def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, uniq_id):
+def gemm_MxKxN_impl(M, N, K, lda, ldb, ldc, uniq_id):
     """Emit C code for gemm impl."""
     NR = NR_MAIN * 4
     VEC_NR = NR_MAIN
@@ -194,5 +194,5 @@ int main() {{
 UNIQ_ID_LEN = 8
 uniq_id = "".join(random.choices(string.ascii_uppercase, k=UNIQ_ID_LEN))
 f = open('c_file_asm.cpp','w')
-f.write(gemm_MxKxN_impl(M, K, N, K, N, N, uniq_id))
+f.write(gemm_MxKxN_impl(M, N, K, K, N, N, uniq_id))
 f.close()

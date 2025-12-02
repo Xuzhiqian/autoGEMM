@@ -671,7 +671,7 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, UNROLL_K = 8, NR_MAIN = 4, with_bias = 
 """
     return code_str
 
-def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, uniq_id):
+def gemm_MxKxN_impl(M, N, K, lda, ldb, ldc, uniq_id):
     
     """Emit C code for gemm impl."""
     cc_code = f"""
@@ -700,12 +700,12 @@ void small_gemm_with_bias(const float *A, const float *B, float *C, const int ld
 }}
 }}
 
-extern "C" int gemm_{M}x{K}x{N}_{lda}_{ldb}_{ldc}_xsmm_{uniq_id}(const float *A, const float *B, float *C, const int lda, const int ldb, const int ldc){{
+extern "C" int gemm_{M}x{N}x{K}_{lda}_{ldb}_{ldc}_xsmm_{uniq_id}(const float *A, const float *B, float *C, const int lda, const int ldb, const int ldc){{
   laf::small_gemm(A, B, C, lda, ldb, ldc);
   return 0;
 }}
 
-extern "C" int gemm_{M}x{K}x{N}_{lda}_{ldb}_{ldc}_xsmm_with_bias_{uniq_id}(const float *A, const float *B, float *C, const int lda, const int ldb, const int ldc){{
+extern "C" int gemm_{M}x{N}x{K}_{lda}_{ldb}_{ldc}_xsmm_with_bias_{uniq_id}(const float *A, const float *B, float *C, const int lda, const int ldb, const int ldc){{
   laf::small_gemm_with_bias(A, B, C, lda, ldb, ldc);
   return 0;
 }}
@@ -804,5 +804,5 @@ int main() {{
 UNIQ_ID_LEN = 8
 uniq_id = "".join(random.choices(string.ascii_uppercase, k=UNIQ_ID_LEN))
 f = open('c_file_asm.cpp','w')
-f.write(gemm_MxKxN_impl(M, K, N, K, N, N, uniq_id))
+f.write(gemm_MxKxN_impl(M, N, K, K, N, N, uniq_id))
 f.close()
