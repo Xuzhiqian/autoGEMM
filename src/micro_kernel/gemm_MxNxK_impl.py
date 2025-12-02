@@ -1,7 +1,7 @@
 from laf_asm_code import laf_asm_code
 from global_config import *
 
-def gemm_MxKxN_impl(M, N, K, lda, ldb, ldc, uniq_id, repeat, pipeline_strategy_level = 0, UNROLL_K = 8, NR_MAIN = 4, MRSA_FLAG = 0):
+def gemm_MxNxK_impl(M, N, K, lda, ldb, ldc, uniq_id, repeat, pipeline_strategy_level = 0, UNROLL_K = 8, NR_MAIN = 4, MRSA_FLAG = 0):
     # lda, ldb, ldc = K, N, N # 这里意味着C矩阵是行主序，A矩阵是行主序，B矩阵是行主序
     """Emit C code for gemm impl."""
     # 通过laf_asm_code生成了small_gemm接口

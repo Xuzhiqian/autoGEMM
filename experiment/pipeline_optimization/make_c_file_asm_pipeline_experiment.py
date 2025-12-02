@@ -725,7 +725,7 @@ def laf_asm_code(M, N, K, lda, ldb, ldc, UNROLL_K = 8, NR_MAIN = 4, with_bias = 
 """
     return code_str
 
-def gemm_MxKxN_impl(M, N, K, lda, ldb, ldc, uniq_id):
+def gemm_MxNxK_impl(M, N, K, lda, ldb, ldc, uniq_id):
     
     """Emit C code for gemm impl."""
     cc_code = f"""
@@ -858,5 +858,5 @@ int main() {{
 UNIQ_ID_LEN = 8
 uniq_id = "".join(random.choices(string.ascii_uppercase, k=UNIQ_ID_LEN))
 f = open('c_file_asm.cpp','w')
-f.write(gemm_MxKxN_impl(M, N, K, K, N, N, uniq_id))
+f.write(gemm_MxNxK_impl(M, N, K, K, N, N, uniq_id))
 f.close()

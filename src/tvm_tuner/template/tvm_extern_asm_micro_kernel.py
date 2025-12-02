@@ -63,7 +63,7 @@ class GemmTensorIntrin(object):
 
 
 
-def intrin_gemm_MxKxN(M, N, K, lda, ldb, ldc):
+def intrin_gemm_MxNxK(M, N, K, lda, ldb, ldc):
     """Defines a SIMD-accelerated transposed matmul."""
     # we generate a unique ID for every intrinsic definition, to prevent name
     # collisions in the generated source (e.g., if there are multiple operators
@@ -101,7 +101,7 @@ def intrin_gemm_MxKxN(M, N, K, lda, ldb, ldc):
     return intrin_decl, uniq_id
 
 
-def gemm_MxKxN_impl(M, N, K, lda, ldb, ldc, pipeline_strategy_level, unroll_k, nr_main, MRSA_FLAG, uniq_id):
+def gemm_MxNxK_impl(M, N, K, lda, ldb, ldc, pipeline_strategy_level, unroll_k, nr_main, MRSA_FLAG, uniq_id):
     from gen_xsmm_asm_armv8_code import xsmm_asm_armv8_code
 
     # Create c source code

@@ -13,7 +13,7 @@ if __name__ == "__main__":
     print(f"Project root in build_kernel_params_list: {project_dir}")
     input_file_path = args.scheduler_log
     print(f"input_file_path in build_kernel_params_list: {input_file_path}")
-    output_file_path = os.path.join(project_dir, f"src/blas_wrapper/kernel_params_list.hpp")
+    output_file_path = os.path.join(project_dir, f"src/blas_wrapper/include/kernel_params_list.hpp")
     print(f"output_file_path in build_kernel_params_list: {output_file_path}")
 
     if not os.path.exists(input_file_path):
@@ -45,7 +45,18 @@ namespace KernelParams
             load_dict = json.loads(line)
             MKN = load_dict["input"]
             cfg = load_dict["config"]["entity"]
-            cc_code+=f"""        params_list.push_back(SimpleStruct({MKN[2][0]}, {MKN[2][2]}, {MKN[2][1]}, {cfg[1][-1][-1]}, {cfg[2][-1][-1]}, {cfg[6][-1]}));\n"""
+            M = MKN[2][0]
+            N = MKN[2][1]
+            K = MKN[2][2]
+            nc, kc, padding_size = 0, 0, 0
+            for param_name, param_type, param_value in cfg:
+                if param_name == "tile_y":
+                    nc = param_value[-1]
+                if param_name == "tile_k":
+                    kc = param_value[-1]
+                if param_name == "padding_size":
+                    padding_size = param_value
+            cc_code+=f"""        params_list.push_back(SimpleStruct({M}, {N}, {K}, {nc}, {kc}, {padding_size}));\n"""
     cc_code += f"""    }}
 }};
 #endif"""
