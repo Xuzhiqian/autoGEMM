@@ -10,14 +10,14 @@ from template.asm_micro_kernel_template import matmul
 
 from global_config import logger
 
-def evaluate(M, K, N, record_file, parallel, pack_dso, target="llvm"):
+def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
     print(f"Applying best history of MxNxK = {M}x{N}x{K} from {record_file}")
     ctx = tvm.cpu(0)
     dtype = "float32"
 
     with autotvm.apply_history_best(record_file):
         with tvm.target.Target(target):
-            s, arg_buf = matmul(M, K, N, parallel)
+            s, arg_buf = matmul(M, N, K, parallel)
             func = tvm.build(s, arg_buf, name="OP_GEMM_%dX%dX%d" % (M, N, K), target=tvm.target.Target(target))
             logger.debug(tvm.lower(s, arg_buf))
 
@@ -26,7 +26,7 @@ def evaluate(M, K, N, record_file, parallel, pack_dso, target="llvm"):
             c = tvm.nd.array(np.zeros((M, N), dtype=dtype), ctx)
 
             workload = autotvm.task.args_to_workload(
-                [M, K, N, parallel], "matmul"
+                [M, N, K, parallel], "matmul"
             )
             tgt = tvm.target.Target.current()
             cfg = autotvm.task.DispatchContext.current.query(tgt, workload)

@@ -13,7 +13,7 @@ import random
 import string
 import sys
 from global_config import *
-from gemm_MxKxN_impl import gemm_MxKxN_impl
+from gemm_MxNxK_impl import gemm_MxNxK_impl
 from makefile_generator import makefile_generator
 
 M = int(sys.argv[1]) # M，N，K来自命令行参数
@@ -29,8 +29,8 @@ UNIQ_ID_LEN = 8
 uniq_id = "".join(random.choices(string.ascii_uppercase, k=UNIQ_ID_LEN))
 logger.debug(f"unique_id: {uniq_id} (用于作为接口名唯一性标识)")
 f = open('c_file_asm.cpp','w')
-logger.debug(f"调用gemm_MxKxN_impl传入M={M}, N={N}, K={K}，A，B，C都是行主序")
-f.write(gemm_MxKxN_impl(M, K, N, K, N, N, uniq_id, repeat=REPEAT, pipeline_strategy_level=PIPELINE_STRATEGY_LEVEL, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN, MRSA_FLAG = MRSA_FLAG))
+logger.debug(f"调用gemm_MxNxK_impl传入M={M}, N={N}, K={K}，A，B，C都是行主序")
+f.write(gemm_MxNxK_impl(M, N, K, K, N, N, uniq_id, repeat=REPEAT, pipeline_strategy_level=PIPELINE_STRATEGY_LEVEL, UNROLL_K=UNROLL_K, NR_MAIN=NR_MAIN, MRSA_FLAG = MRSA_FLAG))
 f.close()
 
 f = open('Makefile', 'w')

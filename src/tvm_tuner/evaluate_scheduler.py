@@ -36,5 +36,4 @@ if __name__ == "__main__":
     elif SIMD == "SVE" :
         target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+sve"
 
-    print('%d, %d, %d' % (M, N, K))
-    evaluate(M, K, N, best_schedule_file, parallel, pack_dso=True, target=target)
+    evaluate(M, N, K, best_schedule_file, parallel, pack_dso=True, target=target)

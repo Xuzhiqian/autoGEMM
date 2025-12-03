@@ -19,8 +19,8 @@ from utils_func.tune import tune
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script to run autotvm.")
     parser.add_argument("-m", type=int, required=True, help="M")
-    parser.add_argument("-k", type=int, required=True, help="K")
     parser.add_argument("-n", type=int, required=True, help="N")
+    parser.add_argument("-k", type=int, required=True, help="K")
     parser.add_argument("-a", "--arch", default="a64fx", choices=["linux", "a64fx"], help='select architecture linux or a64fx')
     parser.add_argument("--parallel", action="store_true", help='whether parallel execute')
     parser.add_argument(
@@ -57,6 +57,6 @@ if __name__ == "__main__":
     pack_dso = True
 
     logger.info(f"Start tune for M={M}, K={K}, N={N}, record_file={record_file}, n_trial={step}, target={target}")
-    tune(M, K, N, record_file, parallel, n_trial=step, target=target)
+    tune(M, N, K, record_file, parallel, n_trial=step, target=target)
     logger.info(f"Start evaluate for M={M}, K={K}, N={N}, record_file={record_file}, parallel={parallel}, pack_dso={pack_dso}, target={target}")
-    evaluate(M, K, N, record_file, parallel, pack_dso=pack_dso, target=target)
+    evaluate(M, N, K, record_file, parallel, pack_dso=pack_dso, target=target)

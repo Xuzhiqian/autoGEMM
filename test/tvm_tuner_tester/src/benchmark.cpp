@@ -29,20 +29,13 @@ int main(int argc, char* argv[]) {
     int M = atoi(argv[1]);
     int N = atoi(argv[2]);
     int K = atoi(argv[3]);
-    int nc, kc, padding_size;
+    int packedB_size;
     int repeat = atoi(argv[4]);
 
-    KernelParams::CreateList();
-    for(auto it = KernelParams::params_list.begin(); it != KernelParams::params_list.end(); it++){
-      if (it->M == M && it->N == N && it->K == K) {
-        nc = it->nc;
-        kc = it->kc;
-        padding_size = it->padding_size;
-        break;
-      }
-    }  
-
-    int nc_ceil = ((nc - 1) / padding_size + 1) * padding_size;
+    KernelParams::CreateMap();
+    std::string query_key = std::to_string(M) + "x" + std::to_string(N) + "x" + std::to_string(K);
+    auto it = KernelParams::mapping.find(query_key)->second;
+    packedB_size = it.packedB_size;
 
     const int lda = K;
     const int ldb = N;
@@ -50,7 +43,7 @@ int main(int argc, char* argv[]) {
 
     float *A = static_cast<float*>(_mm_malloc(64, M * lda * sizeof(float)));
     float *B = static_cast<float*>(_mm_malloc(64, K * ldb * sizeof(float)));
-    float *packedB = static_cast<float*>(_mm_malloc(64, K * (N/nc) * nc_ceil * sizeof(float)));
+    float *packedB = static_cast<float*>(_mm_malloc(64, packedB_size * sizeof(float)));
     float *C = static_cast<float*>(_mm_malloc(64, M * ldc * sizeof(float)));
     float *refC = static_cast<float*>(_mm_malloc(64, M * ldc * sizeof(float)));
     float *ourC = C;
@@ -59,26 +52,13 @@ int main(int argc, char* argv[]) {
     test_utils::init(B,K*ldb);
     test_utils::init(C,M*ldc);
 
-    string base_name = "GEMM_" + std::to_string(M) + "X" + std::to_string(N) + "X" + std::to_string(K);
-    string mod_name = base_name + "_kernel.so";
-    string func_name = "OP_" + base_name;
-    string pack_func_name = func_name + "_packB";
-
-    tvm::runtime::Module mod_tvmlib = tvm::runtime::Module::LoadFromFile("../../../data/tune_output/build/library/" + mod_name);
-    // tvm::runtime::Module mod_tvmlib = (*tvm::runtime::Registry::Get("runtime.SystemLib"))();
-
-    tvm::runtime::PackedFunc pack_func = mod_tvmlib.GetFunction(pack_func_name);
-    tvm::runtime::PackedFunc func = mod_tvmlib.GetFunction(func_name);
+    tvm::runtime::PackedFunc pack_func = it.pack_func;
+    tvm::runtime::PackedFunc func = it.func;
 
     DLTensor*   tvm_A;
     DLTensor*   tvm_B;
     DLTensor*   tvm_packedB;
     DLTensor*   tvm_C;
-
-    const int64_t A_shape[2] = {M, K};
-    const int64_t B_shape[2] = {K, N};
-    const int64_t packedB_shape[4] = {K / kc, N / nc, kc, nc_ceil};
-    const int64_t C_shape[2] = {M, N};
 
     const int dtype_code = kDLFloat;
     const int dtype_bits = 32;
@@ -86,10 +66,10 @@ int main(int argc, char* argv[]) {
     const int device_type = kDLCPU;
     const int device_id = 0;
 
-    TVMArrayAlloc(A_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_A);
-    TVMArrayAlloc(B_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_B);
-    TVMArrayAlloc(packedB_shape, 4, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_packedB);
-    TVMArrayAlloc(C_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_C);
+    TVMArrayAlloc(it.A_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_A);
+    TVMArrayAlloc(it.B_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_B);
+    TVMArrayAlloc(it.packedB_shape, 4, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_packedB);
+    TVMArrayAlloc(it.C_shape, 2, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_C);
 
     tvm_A->data = A;
     tvm_B->data = B;

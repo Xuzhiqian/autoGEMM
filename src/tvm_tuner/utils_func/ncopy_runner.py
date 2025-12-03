@@ -39,7 +39,7 @@ def run_local_ncopy(
         input_A_shape = args_info[0][0]
         input_packedB_shape_info = args_info[1][0]
         
-        m, k, n, _ = measure_input.task.args
+        m, n, k, _ = measure_input.task.args
 
         dev = tvm.cpu(0)
 

@@ -1,7 +1,7 @@
 from laf_asm_code import laf_asm_code
 from global_config import *
 
-def gemm_MxKxN_impl(M, K, N, lda, ldb, ldc, uniq_id, repeat, pipeline_strategy_level = 0, UNROLL_K = 8, NR_MAIN = 4, MRSA_FLAG = 0):
+def gemm_MxNxK_impl(M, N, K, lda, ldb, ldc, uniq_id, repeat, pipeline_strategy_level = 0, UNROLL_K = 8, NR_MAIN = 4, MRSA_FLAG = 0):
     # lda, ldb, ldc = K, N, N # 这里意味着C矩阵是行主序，A矩阵是行主序，B矩阵是行主序
     """Emit C code for gemm impl."""
     # 通过laf_asm_code生成了small_gemm接口
@@ -32,12 +32,12 @@ void small_gemm_with_bias(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE
 }}
 }}
 
-extern "C" int gemm_{M}x{K}x{N}_{lda}_{ldb}_{ldc}_xsmm_{uniq_id}(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, const int lda, const int ldb, const int ldc){{
+extern "C" int gemm_{M}x{N}x{K}_{lda}_{ldb}_{ldc}_xsmm_{uniq_id}(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, const int lda, const int ldb, const int ldc){{
   laf::small_gemm(A, B, C, lda, ldb, ldc);
   return 0;
 }}
 
-extern "C" int gemm_{M}x{K}x{N}_{lda}_{ldb}_{ldc}_xsmm_with_bias_{uniq_id}(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, const int lda, const int ldb, const int ldc){{
+extern "C" int gemm_{M}x{N}x{K}_{lda}_{ldb}_{ldc}_xsmm_with_bias_{uniq_id}(const {DATA_TYPE} *A, const {DATA_TYPE} *B, {DATA_TYPE} *C, const int lda, const int ldb, const int ldc){{
   laf::small_gemm_with_bias(A, B, C, lda, ldb, ldc);
   return 0;
 }}
