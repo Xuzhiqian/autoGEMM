@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     int repeat = atoi(argv[4]);
 
     KernelParams::CreateMap();
-    KernelParams::Key query_key = {M, N, K};
+    std::string query_key = std::to_string(M) + "x" + std::to_string(N) + "x" + std::to_string(K);
     auto it = KernelParams::mapping.find(query_key)->second;
     packedB_size = it.packedB_size;
 

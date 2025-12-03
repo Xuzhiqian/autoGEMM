@@ -10,10 +10,16 @@ app="dlrm"
 # day="20251121"
 # time="20251120165501" # neon
 # time="20251121161600" # sve
-day="20251126"
+# day="20251126"
 # time="20251126165559" # 第一次ncopy调优：100次
-time="20251126171752" # 第二次ncopy调优： 1000次
+# time="20251126171752" # 第二次ncopy调优： 1000次
+# day="20251201"
+# time="20251201152719" # 比较接近kdnn性能的版本
+day="20251202"
+# time="20251202113119" # 调MNK次序的版本, segmentation fault
+time="20251202214055" # 优化2000轮的版本，结果并没有current_best好
 tune_output_path=$PROJECT_ROOT/data/scheduler_house/$app/$day/$time
+# tune_output_path=$PROJECT_ROOT/data/scheduler_house/$app/current_best
 src_path=$PROJECT_ROOT/src
 build_output_path=$tune_output_path/build
 
@@ -67,10 +73,17 @@ do
     N=`echo $line | awk '{print $2}'`
     K=`echo $line | awk '{print $3}'`
     python $evaluate_scheduler_path -m ${M} -n ${N} -k ${K} -a ${arch} ${parallel} --scheduler_log ${scheduler_log_output}
+    let cnt+=1
+done
+
+cat $MNK_file | while read line
+do
+    M=`echo $line | awk '{print $1}'`
+    N=`echo $line | awk '{print $2}'`
+    K=`echo $line | awk '{print $3}'`
     # ldd $benchmark_kernel_path
     # LD_PRELOAD=/usr/lib64/libasan.so.8 $benchmark_kernel_path ${M} ${N} ${K} ${repeats}
     $benchmark_kernel_path ${M} ${N} ${K} ${repeats}
-    let cnt+=1
 done
 
 touch $build_output_path/build.over

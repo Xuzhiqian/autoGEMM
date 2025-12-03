@@ -49,7 +49,7 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
     int packedB_size;
 
     KernelParams::CreateMap();
-    KernelParams::Key query_key = {M, N, K};
+    std::string query_key = std::to_string(M) + "x" + std::to_string(N) + "x" + std::to_string(K);
     auto it = KernelParams::mapping.find(query_key)->second;
     packedB_size = it.packedB_size;
 

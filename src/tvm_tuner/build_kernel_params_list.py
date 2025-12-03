@@ -23,7 +23,7 @@ if __name__ == "__main__":
 #define __KERNEL_PARAMS_LIST_H_
 
 #include <iostream>
-#include <map>
+#include <unordered_map>
 #include <cmath>
 
 #include "tvm/runtime/module.h"
@@ -31,26 +31,6 @@ if __name__ == "__main__":
 
 namespace KernelParams
 {{
-    struct Key {{
-        int M;
-        int N;
-        int K;
-
-        Key() : M(0), N(0), K(0) {{}}
-        Key(int m, int n, int k) : M(m), N(n), K(k) {{}}
-
-        // 重载 < 运算符，用于 map 的比较
-        bool operator<(const Key& other) const {{
-            if (M != other.M) {{
-                return M < other.M;
-            }} else if (N != other.N) {{
-                return N < other.N;
-            }} else {{
-                return K < other.K;
-            }}
-        }}
-    }};
-
     struct Value {{
         int M;
         int N;
@@ -95,7 +75,7 @@ namespace KernelParams
         }}
     }};
 
-    static std::map<Key, Value> mapping;
+    static std::map<std::string, Value> mapping;
 
     static void CreateMap() {{
         if (mapping.empty()) {{
@@ -116,7 +96,7 @@ namespace KernelParams
                     kc = param_value[-1]
                 if param_name == "padding_size":
                     padding_size = param_value
-            cc_code+=f"""            mapping[{{{M}, {N}, {K}}}] = {{{M}, {N}, {K}, {nc}, {kc}, {padding_size}}};\n"""
+            cc_code+=f"""            mapping["{M}x{N}x{K}"] = {{{M}, {N}, {K}, {nc}, {kc}, {padding_size}}};\n"""
     cc_code += f"""        }}
     }}
 }};
