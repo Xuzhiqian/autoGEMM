@@ -7,6 +7,7 @@ from tvm.autotvm.task import ConfigEntity
 
 import numpy as np
 from template.asm_micro_kernel_template import matmul
+from template.pack_B_template import packB
 
 from global_config import logger
 
@@ -18,7 +19,7 @@ def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
     with autotvm.apply_history_best(record_file):
         with tvm.target.Target(target):
             s, arg_buf = matmul(M, N, K, parallel)
-            func = tvm.build(s, arg_buf, name="OP_GEMM_%dX%dX%d" % (M, N, K), target=tvm.target.Target(target))
+            func = tvm.build(s, arg_buf, name="OP_GEMM_%dX%dX%d" % (M, N, K), target=target)
             logger.debug(tvm.lower(s, arg_buf))
 
             a = tvm.nd.array(np.random.uniform(-1, 1, size=(M, K)).astype(dtype), ctx)
@@ -38,32 +39,23 @@ def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
             bn_ceil = ((bn - 1) // padding_size + 1) * padding_size # ceil(bn / padding_size) * padding_size
             logger.debug(f"bn = {bn}, kn = {kn}, bn_ceil = {bn_ceil}")
 
-            B = te.placeholder((K, N), name="B")
-            PackedB = te.compute(
-                (K // kn, N // bn, kn, bn_ceil), 
-                lambda i, x, y, z: te.if_then_else(
-                    z < bn, B[i * kn + y, x * bn + z], 0
-                ), name="PackedB"
-            )
-
             packed_b = tvm.nd.array(np.zeros((K // kn, N // bn, kn, bn_ceil), dtype=dtype), ctx)
-            packb_schedule = te.create_schedule(PackedB.op)
-            bigK, bigN, _, littleN = packb_schedule[PackedB].op.axis
-            packb_schedule[PackedB].vectorize(littleN)
-            if parallel:
-                parallel_axis = packb_schedule[PackedB].fuse(bigK, bigN)
-                packb_schedule[PackedB].parallel(parallel_axis)
-            packb_func = tvm.build(packb_schedule, [B, PackedB], name="OP_GEMM_%dX%dX%d_packB" % (M, N, K), target=target)
-            logger.debug(tvm.lower(packb_schedule, [B, PackedB]))
+
+            packb_schedule, packb_args = packB(M, N, K, bn, kn, bn_ceil, parallel)
+            packb_func = tvm.build(packb_schedule, packb_args, name="OP_GEMM_%dX%dX%d_packB" % (M, N, K), target=target)
+            logger.debug(tvm.lower(packb_schedule, packb_args))
 
             packb_func(b, packed_b)
             func(a, packed_b, c)
+
+            # func(a, b, c)
 
     expected = np.dot(a.asnumpy(), b.asnumpy())
 
     np.testing.assert_allclose(c.asnumpy(), expected, rtol=1e-2, atol=1e-4)
     evaluator = func.time_evaluator(func.entry_name, ctx, number=1000, min_repeat_ms=5000)
     mean_time = evaluator(a, packed_b, c).mean
+    # mean_time = evaluator(a, b, c).mean
     gflops = 2 * M * N * K * 1e-9 / mean_time
 
     print("TVM offline GFLOPS: %f, avg time: %f ms" % (gflops, mean_time * 1000))
