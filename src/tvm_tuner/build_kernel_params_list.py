@@ -35,12 +35,17 @@ namespace KernelParams
         int M;
         int N;
         int K;
-        int nc;
-        int kc;
+        int bm;
+        int bn;
+        int bk;
         int padding_size;
-        int nc_ceil;
+        int bn_ceil;
+        int bk_ceil;
+        int packedA_size;
         int packedB_size;
+        int packAB;
         int64_t A_shape[2];
+        int64_t packedA_shape[4];
         int64_t B_shape[2];
         int64_t packedB_shape[4];
         int64_t C_shape[2];
@@ -48,29 +53,43 @@ namespace KernelParams
         tvm::runtime::PackedFunc pack_func;
         tvm::runtime::PackedFunc func;
 
-        Value() : M(0), N(0), K(0), nc(0), kc(0), padding_size(0) {{}}
-        Value(int m, int n, int k, int nc, int kc, int p) : M(m), N(n), K(k), nc(nc), kc(kc), padding_size(p) {{
-            nc_ceil = ((nc - 1) / padding_size + 1) * padding_size;
-            packedB_size = K * (N / nc) * nc_ceil;
+        Value() : M(0), N(0), K(0), bm(0), bn(0), bk(0), padding_size(0), packAB(0) {{}}
+        Value(int m, int n, int k, int bm, int bn, int bk, int p, int packAB) : M(m), N(n), K(k), bn(bn), bk(bk), padding_size(p), packAB(packAB) {{
             A_shape[0] = M;
             A_shape[1] = K;
             B_shape[0] = K;
             B_shape[1] = N;
-            packedB_shape[0] = K / kc;
-            packedB_shape[1] = N / nc;
-            packedB_shape[2] = kc;
-            packedB_shape[3] = nc_ceil;
             C_shape[0] = M;
             C_shape[1] = N;
-
             std::string base_name = "GEMM_" + std::to_string(M) + "X" + std::to_string(N) + "X" + std::to_string(K);
             std::string mod_name = base_name + "_kernel.so";
             std::string func_name = "OP_" + base_name;
-            std::string pack_func_name = func_name + "_packB";
             std::string loading_path = "/home/linzuxuan/autoGEMM/autoGEMM/data/tune_output/build/library/" + mod_name;
-
             tvm::runtime::Module mod_tvmlib = tvm::runtime::Module::LoadFromFile(loading_path);
-            pack_func = mod_tvmlib.GetFunction(pack_func_name);
+
+            if (packAB == 0) {{
+                ;
+            }} else if (packAB == 1) {{
+                bk_ceil = ((bk - 1) / padding_size + 1) * padding_size;
+                packedA_size = M * (K / bk) * bk_ceil;
+                packedA_shape[0] = M / bm;
+                packedA_shape[1] = K / bk;
+                packedA_shape[2] = bm;
+                packedA_shape[3] = bk_ceil;
+
+                std::string pack_func_name = func_name + "_packA";
+                pack_func = mod_tvmlib.GetFunction(pack_func_name);
+            }} else if (packAB == 2) {{
+                bn_ceil = ((bn - 1) / padding_size + 1) * padding_size;
+                packedB_size = K * (N / bn) * bn_ceil;
+                packedB_shape[0] = K / bk;
+                packedB_shape[1] = N / bn;
+                packedB_shape[2] = bk;
+                packedB_shape[3] = bn_ceil;
+
+                std::string pack_func_name = func_name + "_packB";
+                pack_func = mod_tvmlib.GetFunction(pack_func_name);
+            }}
             func = mod_tvmlib.GetFunction(func_name);
         }}
     }};
@@ -83,20 +102,24 @@ namespace KernelParams
     with open(input_file_path, 'r') as load_f:
         for line in load_f:
             load_dict = json.loads(line)
-            MKN = load_dict["input"]
+            MNK = load_dict["input"]
             cfg = load_dict["config"]["entity"]
-            M = MKN[2][0]
-            N = MKN[2][1]
-            K = MKN[2][2]
-            nc, kc, padding_size = 0, 0, 0
+            M = MNK[2][0]
+            N = MNK[2][1]
+            K = MNK[2][2]
+            bm, bn, bk, padding_size, packAB = 0, 0, 0, 0, 0
             for param_name, param_type, param_value in cfg:
+                if param_name == "tile_x":
+                    bm = param_value[-1]
                 if param_name == "tile_y":
-                    nc = param_value[-1]
+                    bn = param_value[-1]
                 if param_name == "tile_k":
-                    kc = param_value[-1]
+                    bk = param_value[-1]
                 if param_name == "padding_size":
                     padding_size = param_value
-            cc_code+=f"""            mapping["{M}x{N}x{K}"] = {{{M}, {N}, {K}, {nc}, {kc}, {padding_size}}};\n"""
+                if param_name == "packAB":
+                    packAB = param_value
+            cc_code+=f"""            mapping["{M}x{N}x{K}"] = {{{M}, {N}, {K}, {bm}, {bn}, {bk}, {padding_size}, {packAB}}};\n"""
     cc_code += f"""        }}
     }}
 }};

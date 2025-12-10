@@ -1,4 +1,4 @@
-from global_config import SIMD, UNROLL_LANE
+from global_config import SIMD, UNROLL_LANE, SIMD_LANE, logger
 import re
 import tvm
 from tvm import te
@@ -29,30 +29,53 @@ def matmul(M, N, K, parallel):
     elif SIMD == "SVE" :
         cfg.define_knob("padding_size", [1, 4, 16])
 
+    # cfg.define_knob("packAB", [0, 1, 2]) # 0: NPA & NPB 1: PA & NPB, 2: NPA & PB, 3: PA & PB
+    cfg.define_knob("packAB", [0])
+
+    packAB = cfg["packAB"].val
     padding_size = cfg["padding_size"].val
 
     # Matrix "A" has a shape of (M, K).
     A = te.placeholder((M, K), name="A")
-
-    # Matrix "PackedB" has been pre-packed into shape of (K // kn, N // bn, K, bn_ceil), for "bn" is the innermost axis of the splited "N" dim.
-    # "bn_ceil" is a padding size to store "bn" elements.
-    # Note the pre-pack format is only available for inference mode, where weight matrix "B" is fixed.
-    bn = cfg["tile_y"].size[-1]
-    kn = cfg['tile_k'].size[-1]
-    bn_ceil = ((bn - 1) // padding_size + 1) * padding_size
-
-    PackedB = te.placeholder((K // kn, N // bn, kn, bn_ceil), name='PackedB')
-
+    B = te.placeholder((K, N), name="B")
     k = te.reduce_axis((0, K), "k")
 
-    print(f"PackedB({K // kn}, {N // bn}, {kn}, {bn_ceil})")
+    if packAB == 0:
+        # C = A x B
+        C = te.compute(
+            (M, N),
+            lambda x, y: te.sum(A[x, k] * B[k, y], axis=k),
+            name='C',
+        )
+    elif packAB == 1:
+        bm = cfg["tile_x"].size[-1]
+        bk = cfg["tile_k"].size[-1]
+        bk_ceil = ((bk - 1) // padding_size + 1) * padding_size
 
-    # C = A x PackedB:
-    C = te.compute(
-        (M, N),
-        lambda x, y: te.sum(A[x, k] * PackedB[k // kn, y // bn, k % kn, y % bn], axis=k),
-        name="C",
-    )
+        PackedA = te.placeholder((M // bm, K // bk, bm, bk_ceil), name='PackedA')
+
+        # C = PackedA x B
+        C = te.compute(
+            (M, N),
+            lambda x, y: te.sum(PackedA[x // bm, k // bk, x % bm, k % bk] * B[k, y], axis=k),
+            name='C',
+        )
+    elif packAB == 2:
+        # Matrix "PackedB" has been pre-packed into shape of (K // kn, N // bn, K, bn_ceil), for "bn" is the innermost axis of the splited "N" dim.
+        # "bn_ceil" is a padding size to store "bn" elements.
+        # Note the pre-pack format is only available for inference mode, where weight matrix "B" is fixed.
+        bn = cfg["tile_y"].size[-1]
+        kn = cfg['tile_k'].size[-1]
+        bn_ceil = ((bn - 1) // padding_size + 1) * padding_size # bn_ceil will always be the multiplier of padding_size
+
+        PackedB = te.placeholder((K // kn, N // bn, kn, bn_ceil), name='PackedB')
+
+        # C = A x PackedB
+        C = te.compute(
+            (M, N),
+            lambda x, y: te.sum(A[x, k] * PackedB[k // kn, y // bn, k % kn, y % bn], axis=k),
+            name="C",
+        )
 
     # Schedule:
     s = te.create_schedule(C.op)
@@ -89,29 +112,48 @@ def matmul(M, N, K, parallel):
 
     pragma_axis = parallel_axis if parallel else xo
 
+    lda, ldb, ldc = 0, 0, 0
+    if packAB == 0:
+        lda = K
+        ldb = N
+        ldc = N
+    elif packAB == 1:
+        lda = bk_ceil
+        ldb = N
+        ldc = N
+    elif packAB == 2:
+        lda = K
+        ldb = bn_ceil
+        ldc = N
+
     # Inner kernel implementation for the tensorization.
     micro_kernel, uniq_id = intrin_gemm_MxNxK(
-                                cfg["tile_x"].size[-1],
-                                cfg["tile_y"].size[-1],
-                                cfg["tile_k"].size[-1],
-                                K,
-                                bn_ceil,
-                                N,
-                                )
+        cfg["tile_x"].size[-1],
+        cfg["tile_y"].size[-1],
+        cfg["tile_k"].size[-1],
+        lda,
+        ldb,
+        ldc,
+    )
     s[C].tensorize(yi, micro_kernel)
-    graph = tedd.viz_dataflow_graph(s, show_svg=True, dot_file_path=f"/home/linzuxuan/autoGEMM/autoGEMM/data/figure/{M}_{N}_{K}.dot")
+    # graph = tedd.viz_dataflow_graph(s, show_svg=True, dot_file_path=f"/home/linzuxuan/autoGEMM/autoGEMM/data/figure/{M}_{N}_{K}.dot")
     s[C].pragma(pragma_axis, "import_llvm", gemm_MxNxK_impl(
-                                cfg["tile_x"].size[-1], # 最小层级的M
-                                cfg["tile_y"].size[-1], # 最小层级的N
-                                cfg["tile_k"].size[-1], # 最小层级的K
-                                K,       # lda
-                                bn_ceil, # ldb
-                                N,       # ldc
-                                cfg["pipeline_strategy_level_knob"].val,
-                                cfg["unroll_k_knob"].val,
-                                cfg["nr_main_knob"].val,
-                                cfg["MRSA_FLAG"].val,
-                                uniq_id
-                                ))
+        cfg["tile_x"].size[-1],
+        cfg["tile_y"].size[-1],
+        cfg["tile_k"].size[-1],
+        lda,
+        ldb,
+        ldc,
+        cfg["pipeline_strategy_level_knob"].val,
+        cfg["unroll_k_knob"].val,
+        cfg["nr_main_knob"].val,
+        cfg["MRSA_FLAG"].val,
+        uniq_id
+    ))
 
-    return s, [A, PackedB, C]
+    if packAB == 0:
+        return s, [A, B, C]
+    elif packAB == 1:
+        return s, [PackedA, B, C]
+    elif packAB == 2:
+        return s, [A, PackedB, C]

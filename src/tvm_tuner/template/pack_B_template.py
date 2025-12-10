@@ -21,14 +21,14 @@ def packB(M, N, K, bn, kn, bn_ceil, parallel):
         ), name="PackedB"
     )
     
-    packb_schedule = te.create_schedule(PackedB.op)
-    bigK, bigN, littleK, littleN = packb_schedule[PackedB].op.axis
-    packb_schedule[PackedB].vectorize(littleN)
-    # packb_schedule[PackedB].unroll(littleK)
-    # packb_schedule[PackedB].unroll(littleN)
-    # packb_schedule[PackedB].parallel(bigK)
+    packB_schedule = te.create_schedule(PackedB.op)
+    bigK, bigN, littleK, littleN = packB_schedule[PackedB].op.axis
+    packB_schedule[PackedB].vectorize(littleN)
+    # packB_schedule[PackedB].unroll(littleK)
+    # packB_schedule[PackedB].unroll(littleN)
+    # packB_schedule[PackedB].parallel(bigK)
     if parallel:
-        parallel_axis = packb_schedule[PackedB].fuse(bigK, bigN)
-        packb_schedule[PackedB].parallel(parallel_axis)
+        parallel_axis = packB_schedule[PackedB].fuse(bigK, bigN)
+        packB_schedule[PackedB].parallel(parallel_axis)
 
-    return packb_schedule, [B, PackedB]
+    return packB_schedule, [B, PackedB]

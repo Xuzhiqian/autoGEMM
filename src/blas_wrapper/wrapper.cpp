@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <chrono>
 
 #include "tvm/runtime/registry.h"
 
@@ -46,27 +47,17 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
     int N = n;
     int K = k;
 
-    int packedB_size;
+    // printf("MxNxK = %dx%dx%d\n", m, n, k);
 
     KernelParams::CreateMap();
     std::string query_key = std::to_string(M) + "x" + std::to_string(N) + "x" + std::to_string(K);
     auto it = KernelParams::mapping.find(query_key)->second;
-    packedB_size = it.packedB_size;
-
-
-    // printf("MxNxK = %dx%dx%d\n", m, n, k);
-    // printf("m = %d, n = %d, k = %d, nc = %d, kc = %d, padding_size = %d， nc_ceil = %d\n", m, n, k, nc, kc, padding_size, nc_ceil);
-    // printf("Allocating packedB size = %lu Bytes\n", K * (N/nc) * nc_ceil * sizeof(float));
-
-    float *packedB = static_cast<float*>(_mm_malloc(64, packedB_size * sizeof(float)));
 
     tvm::runtime::PackedFunc pack_func = it.pack_func;
     tvm::runtime::PackedFunc func = it.func;
 
-    // printf("Begin allocating DLTensors\n");
     DLTensor tvm_A;
     DLTensor tvm_B;
-    DLTensor tvm_packedB;
     DLTensor tvm_C;
 
     const int dtype_code = kDLFloat;
@@ -78,71 +69,99 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
     DLDataType dtype = {kDLFloat, dtype_bits, dtype_lanes};
     DLDevice device = {kDLCPU, device_id};
 
-    // printf("Setting device\n");
     tvm_A.device = device;
     tvm_B.device = device;
-    tvm_packedB.device = device;
     tvm_C.device = device;
 
     // printf("Setting dtype\n");
     tvm_A.dtype = dtype;
     tvm_B.dtype = dtype;
-    tvm_packedB.dtype = dtype;
     tvm_C.dtype = dtype;
 
     // printf("Setting ndim\n");
     tvm_A.ndim = 2;
     tvm_B.ndim = 2;
-    tvm_packedB.ndim = 4;
     tvm_C.ndim = 2;
 
     // printf("Setting shape\n");
     tvm_A.shape = it.A_shape;
     tvm_B.shape = it.B_shape;
-    tvm_packedB.shape = it.packedB_shape;
     tvm_C.shape = it.C_shape;
 
     // printf("Setting data\n");
     tvm_A.data = (void *)a;
     tvm_B.data = (void *)b;
-    tvm_packedB.data = packedB;
     tvm_C.data = (void *)c;
 
     tvm_A.strides = nullptr;
     tvm_B.strides = nullptr;
-    tvm_packedB.strides = nullptr;
     tvm_C.strides = nullptr;
 
     tvm_A.byte_offset = 0;
     tvm_B.byte_offset = 0;
-    tvm_packedB.byte_offset = 0;
     tvm_C.byte_offset = 0;
 
-    // printf("check a\n");
-    // for (int i = 0; i < m; i++) {
-    //   for (int j = 0; j < k; j++) {
-    //     ((float *)a)[i * k + j] = 0.0;
-    //   }
-    // }
+    int packAB = it.packAB;
+    if (packAB == 0) {
+        func(&tvm_A, &tvm_B, &tvm_C);
+    } else if (packAB == 1) {
+        int packedA_size = it.packedA_size;
+        float *packedA = static_cast<float*>(_mm_malloc(64, packedA_size * sizeof(float)));
 
-    // printf("check c\n");
-    // for (int i = 0; i < m; i++) {
-    //   for (int j = 0; j < n; j++) {
-    //     ((float *)c)[i * n + j] = 0.0;
-    //   }
-    // }
+        // printf("Begin allocating DLTensors\n");
+        DLTensor tvm_packedA;
+        tvm_packedA.device = device;
+        tvm_packedA.dtype = dtype;
+        tvm_packedA.ndim = 4;
+        tvm_packedA.shape = it.packedA_shape;
+        tvm_packedA.data = packedA;
+        tvm_packedA.strides = nullptr;
+        tvm_packedA.byte_offset = 0;
+        // printf("packed_func and func executing\n");
+        // auto start_time = std::chrono::steady_clock::now();
+        pack_func(&tvm_A, &tvm_packedA);
+        // auto mid_time = std::chrono::steady_clock::now();
+        // printf("packed_func execution done\n");
+        func(&tvm_packedA, &tvm_B, &tvm_C);
+        // auto end_time = std::chrono::steady_clock::now();
+        // printf("packed_func and func execution done\n");
 
-    // printf("packed_func and func executing\n");
-    pack_func(&tvm_B, &tvm_packedB);
-    // printf("packed_func execution done\n");
-    func(&tvm_A, &tvm_packedB, &tvm_C);
-    // printf("packed_func and func execution done\n");
+        // double pack_time_second = std::chrono::duration<double>(mid_time - start_time).count();
+        // double matmul_time_second = std::chrono::duration<double>(end_time - mid_time).count();
+        // std::cout << "Pack time: " << pack_time_second << " s " << "Matmul time: " << matmul_time_second << " s " << std::endl;
 
-    // pack_func(b, packedB);
-    // func(a, packedB, c);
+        free(packedA);
+        // printf("Free packedB size = %lu Bytes\n", K * (N/nc) * nc_ceil * sizeof(float));
+    } else if (packAB == 2) {
+        int packedB_size = it.packedB_size;
+        // printf("Allocating packedB size = %lu Bytes\n", packedB_size * sizeof(float));
+        float *packedB = static_cast<float*>(_mm_malloc(64, packedB_size * sizeof(float)));
 
-    free(packedB);
-    // printf("Free packedB size = %lu Bytes\n", K * (N/nc) * nc_ceil * sizeof(float));
+        // printf("Begin allocating DLTensors\n");
+        DLTensor tvm_packedB;
+        tvm_packedB.device = device;
+        tvm_packedB.dtype = dtype;
+        tvm_packedB.ndim = 4;
+        tvm_packedB.shape = it.packedB_shape;
+        tvm_packedB.data = packedB;
+        tvm_packedB.strides = nullptr;
+        tvm_packedB.byte_offset = 0;
+        tvm_C.byte_offset = 0;
+        // printf("packed_func and func executing\n");
+        // auto start_time = std::chrono::steady_clock::now();
+        pack_func(&tvm_B, &tvm_packedB);
+        // auto mid_time = std::chrono::steady_clock::now();
+        // printf("packed_func execution done\n");
+        func(&tvm_A, &tvm_packedB, &tvm_C);
+        // auto end_time = std::chrono::steady_clock::now();
+        // printf("packed_func and func execution done\n");
+
+        // double pack_time_second = std::chrono::duration<double>(mid_time - start_time).count();
+        // double matmul_time_second = std::chrono::duration<double>(end_time - mid_time).count();
+        // std::cout << "Pack time: " << pack_time_second << " s " << "Matmul time: " << matmul_time_second << " s " << std::endl;
+        free(packedB);
+        // printf("Free packedB size = %lu Bytes\n", K * (N/nc) * nc_ceil * sizeof(float));
+    }
 }
 
 #endif
