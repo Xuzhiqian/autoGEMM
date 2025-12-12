@@ -102,7 +102,7 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
     tvm_C.byte_offset = 0;
 
     int packAB = it.packAB;
-    if (packAB == 0) {
+    if (packAB == 0 || packAB == 2) {
         func(&tvm_A, &tvm_B, &tvm_C);
     } else if (packAB == 1) {
         int packedA_size = it.packedA_size;
@@ -131,35 +131,6 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
         // std::cout << "Pack time: " << pack_time_second << " s " << "Matmul time: " << matmul_time_second << " s " << std::endl;
 
         free(packedA);
-        // printf("Free packedB size = %lu Bytes\n", K * (N/nc) * nc_ceil * sizeof(float));
-    } else if (packAB == 2) {
-        int packedB_size = it.packedB_size;
-        // printf("Allocating packedB size = %lu Bytes\n", packedB_size * sizeof(float));
-        float *packedB = static_cast<float*>(_mm_malloc(64, packedB_size * sizeof(float)));
-
-        // printf("Begin allocating DLTensors\n");
-        DLTensor tvm_packedB;
-        tvm_packedB.device = device;
-        tvm_packedB.dtype = dtype;
-        tvm_packedB.ndim = 4;
-        tvm_packedB.shape = it.packedB_shape;
-        tvm_packedB.data = packedB;
-        tvm_packedB.strides = nullptr;
-        tvm_packedB.byte_offset = 0;
-        tvm_C.byte_offset = 0;
-        // printf("packed_func and func executing\n");
-        // auto start_time = std::chrono::steady_clock::now();
-        pack_func(&tvm_B, &tvm_packedB);
-        // auto mid_time = std::chrono::steady_clock::now();
-        // printf("packed_func execution done\n");
-        func(&tvm_A, &tvm_packedB, &tvm_C);
-        // auto end_time = std::chrono::steady_clock::now();
-        // printf("packed_func and func execution done\n");
-
-        // double pack_time_second = std::chrono::duration<double>(mid_time - start_time).count();
-        // double matmul_time_second = std::chrono::duration<double>(end_time - mid_time).count();
-        // std::cout << "Pack time: " << pack_time_second << " s " << "Matmul time: " << matmul_time_second << " s " << std::endl;
-        free(packedB);
         // printf("Free packedB size = %lu Bytes\n", K * (N/nc) * nc_ceil * sizeof(float));
     }
 }

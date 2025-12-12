@@ -39,15 +39,12 @@ namespace KernelParams
         int bn;
         int bk;
         int padding_size;
-        int bn_ceil;
         int bk_ceil;
         int packedA_size;
-        int packedB_size;
         int packAB;
         int64_t A_shape[2];
         int64_t packedA_shape[4];
         int64_t B_shape[2];
-        int64_t packedB_shape[4];
         int64_t C_shape[2];
 
         tvm::runtime::PackedFunc pack_func;
@@ -67,7 +64,7 @@ namespace KernelParams
             std::string loading_path = "/home/linzuxuan/autoGEMM/autoGEMM/data/tune_output/build/library/" + mod_name;
             tvm::runtime::Module mod_tvmlib = tvm::runtime::Module::LoadFromFile(loading_path);
 
-            if (packAB == 0) {{
+            if (packAB == 0 || packAB == 2) {{
                 ;
             }} else if (packAB == 1) {{
                 bk_ceil = ((bk - 1) / padding_size + 1) * padding_size;
@@ -78,16 +75,6 @@ namespace KernelParams
                 packedA_shape[3] = bk_ceil;
 
                 std::string pack_func_name = func_name + "_packA";
-                pack_func = mod_tvmlib.GetFunction(pack_func_name);
-            }} else if (packAB == 2) {{
-                bn_ceil = ((bn - 1) / padding_size + 1) * padding_size;
-                packedB_size = K * (N / bn) * bn_ceil;
-                packedB_shape[0] = K / bk;
-                packedB_shape[1] = N / bn;
-                packedB_shape[2] = bk;
-                packedB_shape[3] = bn_ceil;
-
-                std::string pack_func_name = func_name + "_packB";
                 pack_func = mod_tvmlib.GetFunction(pack_func_name);
             }}
             func = mod_tvmlib.GetFunction(func_name);

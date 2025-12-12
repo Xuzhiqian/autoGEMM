@@ -7,7 +7,6 @@ from tvm.autotvm.task import ConfigEntity
 
 import numpy as np
 from template.asm_micro_kernel_template import matmul
-from template.pack_B_template import packB
 from template.pack_A_template import packA
 
 from global_config import logger
@@ -36,7 +35,7 @@ def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
 
             packAB = cfg["packAB"].val
 
-            if packAB == 0:
+            if packAB == 0 or packAB == 2:
                 func(a, b, c)
             elif packAB == 1:
                 padding_size = cfg["padding_size"].val
@@ -53,21 +52,6 @@ def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
 
                 packA_func(a, packed_A)
                 func(packed_A, b, c)
-            elif packAB == 2:
-                padding_size = cfg["padding_size"].val
-                bn = cfg["tile_y"].size[-1]
-                kn = cfg["tile_k"].size[-1]
-                bn_ceil = ((bn - 1) // padding_size + 1) * padding_size
-                logger.debug(f"bn = {bn}, kn = {kn}, bn_ceil = {bn_ceil}")
-
-                packed_b = tvm.nd.array(np.zeros((K // kn, N // bn, kn, bn_ceil), dtype=dtype), ctx)
-
-                packB_schedule, packB_args = packB(M, N, K, bn, kn, bn_ceil, parallel)
-                packB_func = tvm.build(packB_schedule, packB_args, name="OP_GEMM_%dX%dX%d_packB" % (M, N, K), target=target)
-                logger.debug(tvm.lower(packB_schedule, packB_args))
-
-                packB_func(b, packed_b)
-                func(a, packed_b, c)
 
     # Verify results
     expected = np.dot(a.asnumpy(), b.asnumpy())
@@ -83,8 +67,6 @@ def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
     pack_func = None
     if packAB == 1:
         pack_func = packA_func
-    elif packAB == 2:
-        pack_func = packB_func
 
     if pack_dso:
         current_directory = os.path.dirname(os.path.abspath(__file__))

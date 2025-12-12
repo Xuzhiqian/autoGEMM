@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     test_utils::gemm_ref(A, B, refC, M, N, K, lda, ldb, ldc, ACC);
 
     int packAB = it.packAB;
-    if (packAB == 0) {
+    if (packAB == 0 || packAB == 2) {
         // warming
         for (int i = 0; i < n_warming; ++i) {
             func(tvm_A, tvm_B, tvm_C);
@@ -135,39 +135,6 @@ int main(int argc, char *argv[])
         func(tvm_packedA, tvm_B, tvm_C);
 
         free(packedA);
-    } else if (packAB == 2) {
-        int packedB_size = it.packedB_size;
-        float *packedB = static_cast<float *>(_mm_malloc(64, packedB_size * sizeof(float)));
-
-        DLTensor *tvm_packedB;
-        TVMArrayAlloc(it.packedB_shape, 4, dtype_code, dtype_bits, dtype_lanes, device_type, device_id, &tvm_packedB);
-        tvm_packedB->data = packedB;
-
-        // warming
-        pack_func(tvm_B, tvm_packedB);
-        for (int i = 0; i < n_warming; ++i) {
-            func(tvm_A, tvm_packedB, tvm_C);
-        }
-
-        // Testing performance
-        Timer t_1;
-        for (int i = 0; i < n_loops; ++i) {
-            func(tvm_A, tvm_packedB, tvm_C);
-        }
-        latency_offline = t_1.getTime();
-
-        Timer t_2;
-        for (int i = 0; i < n_loops; ++i) {
-            pack_func(tvm_B, tvm_packedB);
-            func(tvm_A, tvm_packedB, tvm_C);
-        }
-        latency_online = t_2.getTime();
-
-        // Test accuracy
-        pack_func(tvm_B, tvm_packedB);
-        func(tvm_A, tvm_packedB, tvm_C);
-
-        free(packedB);
     }
 
     float gflops = M * N * K / latency_offline / 1000000 * n_loops * 2;
