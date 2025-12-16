@@ -35,23 +35,14 @@ namespace KernelParams
         int M;
         int N;
         int K;
-        int bm;
-        int bn;
-        int bk;
-        int padding_size;
-        int bk_ceil;
-        int packedA_size;
-        int packAB;
         int64_t A_shape[2];
-        int64_t packedA_shape[4];
         int64_t B_shape[2];
         int64_t C_shape[2];
 
-        tvm::runtime::PackedFunc pack_func;
         tvm::runtime::PackedFunc func;
 
-        Value() : M(0), N(0), K(0), bm(0), bn(0), bk(0), padding_size(0), packAB(0) {{}}
-        Value(int m, int n, int k, int bm, int bn, int bk, int p, int packAB) : M(m), N(n), K(k), bn(bn), bk(bk), padding_size(p), packAB(packAB) {{
+        Value() : M(0), N(0), K(0) {{}}
+        Value(int m, int n, int k) : M(m), N(n), K(k) {{
             A_shape[0] = M;
             A_shape[1] = K;
             B_shape[0] = K;
@@ -64,19 +55,6 @@ namespace KernelParams
             std::string loading_path = "/home/linzuxuan/autoGEMM/autoGEMM/data/tune_output/build/library/" + mod_name;
             tvm::runtime::Module mod_tvmlib = tvm::runtime::Module::LoadFromFile(loading_path);
 
-            if (packAB == 0 || packAB == 2) {{
-                ;
-            }} else if (packAB == 1) {{
-                bk_ceil = ((bk - 1) / padding_size + 1) * padding_size;
-                packedA_size = M * (K / bk) * bk_ceil;
-                packedA_shape[0] = M / bm;
-                packedA_shape[1] = K / bk;
-                packedA_shape[2] = bm;
-                packedA_shape[3] = bk_ceil;
-
-                std::string pack_func_name = func_name + "_packA";
-                pack_func = mod_tvmlib.GetFunction(pack_func_name);
-            }}
             func = mod_tvmlib.GetFunction(func_name);
         }}
     }};
@@ -94,19 +72,7 @@ namespace KernelParams
             M = MNK[2][0]
             N = MNK[2][1]
             K = MNK[2][2]
-            bm, bn, bk, padding_size, packAB = 0, 0, 0, 0, 0
-            for param_name, param_type, param_value in cfg:
-                if param_name == "tile_x":
-                    bm = param_value[-1]
-                if param_name == "tile_y":
-                    bn = param_value[-1]
-                if param_name == "tile_k":
-                    bk = param_value[-1]
-                if param_name == "padding_size":
-                    padding_size = param_value
-                if param_name == "packAB":
-                    packAB = param_value
-            cc_code+=f"""            mapping["{M}x{N}x{K}"] = {{{M}, {N}, {K}, {bm}, {bn}, {bk}, {padding_size}, {packAB}}};\n"""
+            cc_code+=f"""            mapping["{M}x{N}x{K}"] = {{{M}, {N}, {K}}};\n"""
     cc_code += f"""        }}
     }}
 }};

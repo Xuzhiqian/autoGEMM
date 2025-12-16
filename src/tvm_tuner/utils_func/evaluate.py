@@ -7,7 +7,6 @@ from tvm.autotvm.task import ConfigEntity
 
 import numpy as np
 from template.asm_micro_kernel_template import matmul
-from template.pack_A_template import packA
 
 from global_config import logger
 
@@ -33,25 +32,7 @@ def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
             cfg = autotvm.task.DispatchContext.current.query(tgt, workload)
             logger.debug(f"best_cfg = {cfg}")
 
-            packAB = cfg["packAB"].val
-
-            if packAB == 0 or packAB == 2:
-                func(a, b, c)
-            elif packAB == 1:
-                padding_size = cfg["padding_size"].val
-                bm = cfg["tile_x"].size[-1]
-                bk = cfg["tile_k"].size[-1]
-                bk_ceil = ((bk - 1) // padding_size + 1) * padding_size
-                logger.debug(f"bm = {bm}, bk = {bk}, bk_ceil = {bk_ceil}")
-
-                packed_A = tvm.nd.array(np.zeros((M // bm, K // bk, bm, bk_ceil), dtype=dtype), ctx)
-
-                packA_schedule, packA_args = packA(M, N, K, bm, bk, bk_ceil, parallel)
-                packA_func = tvm.build(packA_schedule, packA_args, name="OP_GEMM_%dX%dX%d_packA" % (M, N, K), target=target)
-                logger.debug(tvm.lower(packA_schedule, packA_args))
-
-                packA_func(a, packed_A)
-                func(packed_A, b, c)
+            func(a, b, c)
 
     # Verify results
     expected = np.dot(a.asnumpy(), b.asnumpy())
@@ -64,23 +45,14 @@ def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
     # gflops = 2 * M * N * K * 1e-9 / mean_time
     # print("TVM offline GFLOPS: %f, avg time: %f ms" % (gflops, mean_time * 1000))
 
-    pack_func = None
-    if packAB == 1:
-        pack_func = packA_func
-
     if pack_dso:
         current_directory = os.path.dirname(os.path.abspath(__file__))
         func_path = os.path.join(current_directory, f"../../../data/tune_output/build/gemm_obj/{func.name}.o")
         func.save(func_path)
-        if pack_func:
-            pack_func_path = os.path.join(current_directory, f"../../../data/tune_output/build/gemm_obj/{pack_func.name}.o")
-            pack_func.save(pack_func_path)
 
         static_kernel_path = os.path.join(current_directory, f"../../../data/tune_output/build/library/GEMM_{M}X{N}X{K}_kernel.a")
         op_gemm_path = os.path.join(current_directory, f"../../../data/tune_output/build/gemm_obj/OP_GEMM_{M}X{N}X{K}*.o")
         os.system(f"ar rcs {static_kernel_path} {op_gemm_path}")
 
         shared_kernel_path = os.path.join(current_directory, f"../../../data/tune_output/build/library/GEMM_{M}X{N}X{K}_kernel.so")
-        if pack_func:
-            func.import_module(pack_func)
         func.export_library(shared_kernel_path)

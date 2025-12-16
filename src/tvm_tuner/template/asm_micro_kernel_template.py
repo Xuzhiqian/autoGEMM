@@ -32,9 +32,10 @@ def matmul(M, N, K, parallel):
         cfg.define_knob("padding_size", [1, 4, 8, 16])
 
     # cfg.define_knob("packAB", [0, 1, 2]) # 0: NPA & NPB 1: PA & NPB, 2: NPA & PB, 3: PA & PB
+    cfg.define_knob("packAB", [0, 2]) # 0: NPA & NPB 1: PA & NPB, 2: NPA & PB, 3: PA & PB
     # cfg.define_knob("packAB", [0])
     # cfg.define_knob("packAB", [1])
-    cfg.define_knob("packAB", [2]) # TODO: occasionally result error with NPA & PB
+    # cfg.define_knob("packAB", [2])
 
     packAB = cfg["packAB"].val
     padding_size = cfg["padding_size"].val
@@ -55,8 +56,56 @@ def matmul(M, N, K, parallel):
         bm = cfg["tile_x"].size[-1]
         bk = cfg["tile_k"].size[-1]
         bk_ceil = ((bk - 1) // padding_size + 1) * padding_size
+        # print(f"bm = {bm}, bk = {bk}, bk_ceil = {bk_ceil}")
+        # print(f"M // bm = {M // bm}, K // bk = {K // bk}")
 
-        PackedA = te.placeholder((M // bm, K // bk, bm, bk_ceil), name='PackedA')
+        def make_packa_tir(ins, outs):
+            """创建TIR描述的计算"""
+            A_buf = ins[0]
+            PackedA_buf = outs[0]
+            
+            # 构建计算体
+            i = tir.Var('i', dtype='int32')
+            x = tir.Var('x', dtype='int32')
+            y = tir.Var('y', dtype='int32')
+            z = tir.Var('z', dtype='int32')
+            
+            # 循环边界
+            i_bound = M // bm
+            x_bound = K // bk
+            y_bound = bm
+            z_bound = bk_ceil
+            
+            # 计算表达式
+            condition = z < bk
+            true_val = A_buf[i * bm + y, x * bk + z]
+            false_val = tir.const(0.0, 'float32')
+            
+            compute = tir.Select(condition, true_val, false_val)
+
+            store = tir.BufferStore(PackedA_buf, compute, [i, x, y, z])
+
+            inner_loop_z = tir.For(z, 0, z_bound, tir.ForKind.SERIAL, store)
+            inner_loop_y = tir.For(y, 0, y_bound, tir.ForKind.SERIAL, inner_loop_z)
+            inner_loop_x = tir.For(x, 0, x_bound, tir.ForKind.SERIAL, inner_loop_y)
+            outer_loop_i = tir.For(i, 0, i_bound, tir.ForKind.SERIAL, inner_loop_x)
+
+            # 创建完整的TIR函数
+            func = tir.PrimFunc(
+                params=[A_buf, PackedA_buf],
+                body=outer_loop_i,
+                ret_type=None
+            )
+            
+            return func.body
+
+        PackedA = te.extern(
+            shape=(M // bm, K // bk, bm, bk_ceil),
+            inputs=[A],
+            fcompute=lambda ins, outs: make_packa_tir(ins, outs),
+            name='PackedA_tir',
+            dtype='float32'
+        )
 
         # C = PackedA x B
         C = te.compute(
@@ -211,7 +260,4 @@ def matmul(M, N, K, parallel):
 
     cfg.add_flop(2 * M * N * K) 
 
-    if packAB == 0 or packAB == 2:
-        return s, [A, B, C]
-    elif packAB == 1:
-        return s, [PackedA, B, C]
+    return s, [A, B, C]

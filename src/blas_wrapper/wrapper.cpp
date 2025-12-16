@@ -53,7 +53,6 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
     std::string query_key = std::to_string(M) + "x" + std::to_string(N) + "x" + std::to_string(K);
     auto it = KernelParams::mapping.find(query_key)->second;
 
-    tvm::runtime::PackedFunc pack_func = it.pack_func;
     tvm::runtime::PackedFunc func = it.func;
 
     DLTensor tvm_A;
@@ -101,38 +100,7 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
     tvm_B.byte_offset = 0;
     tvm_C.byte_offset = 0;
 
-    int packAB = it.packAB;
-    if (packAB == 0 || packAB == 2) {
-        func(&tvm_A, &tvm_B, &tvm_C);
-    } else if (packAB == 1) {
-        int packedA_size = it.packedA_size;
-        float *packedA = static_cast<float*>(_mm_malloc(64, packedA_size * sizeof(float)));
-
-        // printf("Begin allocating DLTensors\n");
-        DLTensor tvm_packedA;
-        tvm_packedA.device = device;
-        tvm_packedA.dtype = dtype;
-        tvm_packedA.ndim = 4;
-        tvm_packedA.shape = it.packedA_shape;
-        tvm_packedA.data = packedA;
-        tvm_packedA.strides = nullptr;
-        tvm_packedA.byte_offset = 0;
-        // printf("packed_func and func executing\n");
-        // auto start_time = std::chrono::steady_clock::now();
-        pack_func(&tvm_A, &tvm_packedA);
-        // auto mid_time = std::chrono::steady_clock::now();
-        // printf("packed_func execution done\n");
-        func(&tvm_packedA, &tvm_B, &tvm_C);
-        // auto end_time = std::chrono::steady_clock::now();
-        // printf("packed_func and func execution done\n");
-
-        // double pack_time_second = std::chrono::duration<double>(mid_time - start_time).count();
-        // double matmul_time_second = std::chrono::duration<double>(end_time - mid_time).count();
-        // std::cout << "Pack time: " << pack_time_second << " s " << "Matmul time: " << matmul_time_second << " s " << std::endl;
-
-        free(packedA);
-        // printf("Free packedB size = %lu Bytes\n", K * (N/nc) * nc_ceil * sizeof(float));
-    }
+    func(&tvm_A, &tvm_B, &tvm_C);
 }
 
 #endif
