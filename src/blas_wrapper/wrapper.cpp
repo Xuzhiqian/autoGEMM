@@ -6,8 +6,6 @@
 #include <filesystem>
 #include <chrono>
 
-#include "tvm/runtime/registry.h"
-
 #include "kernel_params_list.hpp"
 
 #include "autogemm_sgemm.h"
@@ -59,23 +57,14 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
     DLTensor tvm_B;
     DLTensor tvm_C;
 
-    const int dtype_code = kDLFloat;
-    const int dtype_bits = 32;
-    const int dtype_lanes = 1;
-    const int device_type = kDLCPU;
-    const int device_id = 0;
-
-    DLDataType dtype = {kDLFloat, dtype_bits, dtype_lanes};
-    DLDevice device = {kDLCPU, device_id};
-
-    tvm_A.device = device;
-    tvm_B.device = device;
-    tvm_C.device = device;
+    tvm_A.device = it.device;
+    tvm_B.device = it.device;
+    tvm_C.device = it.device;
 
     // printf("Setting dtype\n");
-    tvm_A.dtype = dtype;
-    tvm_B.dtype = dtype;
-    tvm_C.dtype = dtype;
+    tvm_A.dtype = it.dtype;
+    tvm_B.dtype = it.dtype;
+    tvm_C.dtype = it.dtype;
 
     // printf("Setting ndim\n");
     tvm_A.ndim = 2;

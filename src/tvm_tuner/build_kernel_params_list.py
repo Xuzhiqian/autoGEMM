@@ -28,6 +28,7 @@ if __name__ == "__main__":
 
 #include "tvm/runtime/module.h"
 #include "tvm/runtime/packed_func.h"
+#include "tvm/runtime/registry.h"
 
 namespace KernelParams
 {{
@@ -40,6 +41,15 @@ namespace KernelParams
         int64_t C_shape[2];
 
         tvm::runtime::PackedFunc func;
+
+        uint8_t dtype_code = kDLFloat;
+        uint8_t dtype_bits = 32;
+        uint16_t dtype_lanes = 1;
+        int device_type = kDLCPU;
+        int device_id = 0;
+
+        DLDataType dtype = {{dtype_code, dtype_bits, dtype_lanes}};
+        DLDevice device = {{kDLCPU, device_id}};
 
         Value() : M(0), N(0), K(0) {{}}
         Value(int m, int n, int k) : M(m), N(n), K(k) {{
