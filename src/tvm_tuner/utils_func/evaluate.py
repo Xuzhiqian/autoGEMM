@@ -18,7 +18,7 @@ def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
     with autotvm.apply_history_best(record_file):
         with tvm.target.Target(target):
             s, arg_buf = matmul(M, N, K, parallel)
-            func = tvm.build(s, arg_buf, name="OP_GEMM_%dX%dX%d" % (M, N, K), target=tvm.target.Target(target))
+            func = tvm.build(s, arg_buf, name="OP_GEMM_%dX%dX%d" % (M, N, K), target=target)
             logger.debug(tvm.lower(s, arg_buf))
 
             a = tvm.nd.array(np.random.uniform(-1, 1, size=(M, K)).astype(dtype), ctx)
@@ -32,52 +32,27 @@ def evaluate(M, N, K, record_file, parallel, pack_dso, target="llvm"):
             cfg = autotvm.task.DispatchContext.current.query(tgt, workload)
             logger.debug(f"best_cfg = {cfg}")
 
-            padding_size = cfg["padding_size"].val
-            bn = cfg["tile_y"].size[-1]
-            kn = cfg["tile_k"].size[-1]
-            bn_ceil = ((bn - 1) // padding_size + 1) * padding_size # ceil(bn / padding_size) * padding_size
-            logger.debug(f"bn = {bn}, kn = {kn}, bn_ceil = {bn_ceil}")
+            func(a, b, c)
 
-            B = te.placeholder((K, N), name="B")
-            PackedB = te.compute(
-                (K // kn, N // bn, kn, bn_ceil), 
-                lambda i, x, y, z: te.if_then_else(
-                    z < bn, B[i * kn + y, x * bn + z], 0
-                ), name="PackedB"
-            )
-
-            packed_b = tvm.nd.array(np.zeros((K // kn, N // bn, kn, bn_ceil), dtype=dtype), ctx)
-            packb_schedule = te.create_schedule(PackedB.op)
-            bigK, bigN, _, littleN = packb_schedule[PackedB].op.axis
-            packb_schedule[PackedB].vectorize(littleN)
-            if parallel:
-                parallel_axis = packb_schedule[PackedB].fuse(bigK, bigN)
-                packb_schedule[PackedB].parallel(parallel_axis)
-            packb_func = tvm.build(packb_schedule, [B, PackedB], name="OP_GEMM_%dX%dX%d_packB" % (M, N, K), target=target)
-            logger.debug(tvm.lower(packb_schedule, [B, PackedB]))
-
-            packb_func(b, packed_b)
-            func(a, packed_b, c)
-
+    # Verify results
     expected = np.dot(a.asnumpy(), b.asnumpy())
-
     np.testing.assert_allclose(c.asnumpy(), expected, rtol=1e-2, atol=1e-4)
-    evaluator = func.time_evaluator(func.entry_name, ctx, number=1000, min_repeat_ms=5000)
-    mean_time = evaluator(a, packed_b, c).mean
-    gflops = 2 * M * N * K * 1e-9 / mean_time
 
-    print("TVM offline GFLOPS: %f, avg time: %f ms" % (gflops, mean_time * 1000))
-    logger.debug(f"pack_dso is {pack_dso}")
+    # Performance
+    # evaluator = func.time_evaluator(func.entry_name, ctx, number=1000, min_repeat_ms=5000)
+    # mean_time = evaluator(a, packed_b, c).mean
+    # mean_time = evaluator(a, b, c).mean
+    # gflops = 2 * M * N * K * 1e-9 / mean_time
+    # print("TVM offline GFLOPS: %f, avg time: %f ms" % (gflops, mean_time * 1000))
 
     if pack_dso:
         current_directory = os.path.dirname(os.path.abspath(__file__))
-        packb_func_path = os.path.join(current_directory, f"../../../data/tune_output/build/gemm_obj/{packb_func.name}.o")
         func_path = os.path.join(current_directory, f"../../../data/tune_output/build/gemm_obj/{func.name}.o")
-        packb_func.save(packb_func_path)
         func.save(func_path)
+
         static_kernel_path = os.path.join(current_directory, f"../../../data/tune_output/build/library/GEMM_{M}X{N}X{K}_kernel.a")
         op_gemm_path = os.path.join(current_directory, f"../../../data/tune_output/build/gemm_obj/OP_GEMM_{M}X{N}X{K}*.o")
         os.system(f"ar rcs {static_kernel_path} {op_gemm_path}")
+
         shared_kernel_path = os.path.join(current_directory, f"../../../data/tune_output/build/library/GEMM_{M}X{N}X{K}_kernel.so")
-        func.import_module(packb_func)
         func.export_library(shared_kernel_path)

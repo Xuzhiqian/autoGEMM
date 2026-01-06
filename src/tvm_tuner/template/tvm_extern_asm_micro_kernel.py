@@ -112,5 +112,5 @@ def gemm_MxNxK_impl(M, N, K, lda, ldb, ldc, pipeline_strategy_level, unroll_k, n
     ll_path = temp.relpath("temp.ll")
     # ll_path = "temp.ll"
     # Create LLVM ir from c source code
-    ll_code = clang.create_llvm(cc_code, output=ll_path, options=["-march=armv8-a", "-O3", "-std=c++14"], cc=cc_compiler)
+    ll_code = clang.create_llvm(cc_code, output=ll_path, options=["-march=armv8.3-a+sve", "-O3", "-std=c++14"], cc=cc_compiler)
     return ll_code
