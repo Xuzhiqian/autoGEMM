@@ -10,6 +10,7 @@ __pycache__/
 .Python
 build/
 tune_output/
+output/
 develop-eggs/
 dist/
 downloads/
@@ -81,6 +82,9 @@ target/
 # IPython
 profile_default/
 ipython_config.py
+*.dot
+*.gv
+*.png
 
 # pyenv
 .python-version
