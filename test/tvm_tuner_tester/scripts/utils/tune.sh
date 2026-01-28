@@ -51,8 +51,6 @@ else
     exit -1
 fi
 
-export OMP_NUM_THREADS=${threads}
-
 # creating directories
 if [[ -d "$WORKING_DIR" ]]; then
     rm -rf $WORKING_DIR
@@ -88,6 +86,7 @@ do
 done
 
 ## set environment
+export OMP_NUM_THREADS=${threads}
 export PYTHONPATH=$PYTHONPATH:$src_path:$src_path/tvm_tuner:$src_path/micro_kernel
 export TVM_CC=clang++
 

@@ -16,4 +16,4 @@ K=(64 128 256 512 1024 2048)
 
 # calling tune.sh to opt
 TUNE_SCRIPT=$PROJECT_ROOT/test/tvm_tuner_tester/scripts/utils/tune.sh
-bash $TUNE_SCRIPT --arch=$arch --threads=$threads --tune_num=$tune_num --module=$module -m "${M[*]}" -n "${N[*]}" -k "${K[*]}"
+bash $TUNE_SCRIPT --arch $arch --threads $threads --tune_num $tune_num --module $module -m "${M[*]}" -n "${N[*]}" -k "${K[*]}"
