@@ -1,4 +1,5 @@
 from global_config import *
+
 import tvm
 from tvm import te
 from tvm import autotvm
@@ -12,9 +13,7 @@ import argparse
 import numpy as np
 
 from template.asm_micro_kernel_template import matmul
-from utils_func.evaluate import evaluate
-from utils_func.tune import tune
-
+from utils.tune import tune
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script to run autotvm.")
@@ -39,6 +38,14 @@ if __name__ == "__main__":
         required=False,
         help="Specify name of the file to record autotvm tuning result",
     )
+    parser.add_argument(
+        "-b",
+        "--best_record_file",
+        default="scheduler_summary.log",
+        type=str,
+        required=False,
+        help="Specify name of the file to record autotvm tuning result",
+    )
     args = parser.parse_args()
 
     M = args.m
@@ -46,17 +53,13 @@ if __name__ == "__main__":
     N = args.n
 
     record_file = args.record_file
+    best_record_file = args.best_record_file
     step = args.step
     parallel = args.parallel
 
-    if SIMD == "NEON":
-        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+neon"
-    elif SIMD == "SVE":
-        target = f"llvm -mtriple=aarch64-linux-gnu -mattr=+sve"
+    target = BUILD_TARGET
 
-    pack_dso = True
+    logger.info(f"Start tune for M={M}, K={K}, N={N}, record_file={record_file}, best_record_file={best_record_file}, n_trial={step}, target={target}")
+    tune(M, N, K, record_file, best_record_file, parallel, n_trial=step, target=target)
 
-    logger.info(f"Start tune for M={M}, K={K}, N={N}, record_file={record_file}, n_trial={step}, target={target}")
-    tune(M, N, K, record_file, parallel, n_trial=step, target=target)
-    logger.info(f"Start evaluate for M={M}, K={K}, N={N}, record_file={record_file}, parallel={parallel}, pack_dso={pack_dso}, target={target}")
-    evaluate(M, N, K, record_file, parallel, pack_dso=pack_dso, target=target)
+    autotvm.record.pick_best(record_file, best_record_file)

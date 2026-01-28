@@ -66,7 +66,8 @@ def matmul(M, N, K, parallel):
                 z < bk,
                 A[i * bm + y, x * bk + z],
                 0
-            )
+            ),
+            name='PackedA'
         )
 
         # C = PackedA x B
@@ -113,7 +114,8 @@ def matmul(M, N, K, parallel):
                 z < bk,
                 A[i * bm + y, x * bk + z],
                 0
-            )
+            ),
+            name='PackedA'
         )
         PackedB = te.compute(
             (K // bk, N // bn, bk, bn_ceil),
@@ -130,6 +132,7 @@ def matmul(M, N, K, parallel):
             lambda x, y: te.sum(PackedA[x // bm, k // bk, x % bm, k % bk] * PackedB[k // bk, y // bn, k % bk, y % bn], axis=k),
             name="C",
         )
+
     # Schedule:
     s = te.create_schedule(C.op)
     x, y = s[C].op.axis
@@ -165,9 +168,9 @@ def matmul(M, N, K, parallel):
 
     pragma_axis = parallel_axis if parallel else xo
 
-    # if packAB == 2:
-    #     bigK, bigN, littleK, littleN = s[PackedB].op.axis
-    #     s[PackedB].vectorize(littleN)
+    if packAB == 2:
+        bigK, bigN, littleK, littleN = s[PackedB].op.axis
+        s[PackedB].vectorize(littleN)
 
     if packAB == 1:
         s[PackedA].compute_at(s[C], xo) # packedA at xo
@@ -176,6 +179,8 @@ def matmul(M, N, K, parallel):
     elif packAB == 3:
         s[PackedA].compute_at(s[C], xo) # packedA at xo
         s[PackedB].compute_at(s[C], xo) # packedB at xo
+
+    # s[C].decorate("buffer_store_stage", "")
 
     lda, ldb, ldc = 0, 0, 0
     if packAB == 0:
@@ -195,30 +200,32 @@ def matmul(M, N, K, parallel):
         ldb = bn_ceil
         ldc = N
 
-    # Inner kernel implementation for the tensorization.
-    micro_kernel, uniq_id = intrin_gemm_MxNxK(
-        cfg["tile_x"].size[-1],
-        cfg["tile_y"].size[-1],
-        cfg["tile_k"].size[-1],
-        lda,
-        ldb,
-        ldc,
-    )
-    s[C].tensorize(yi, micro_kernel)
-    # graph = tedd.viz_dataflow_graph(s, show_svg=True, dot_file_path=f"/home/linzuxuan/autoGEMM/autoGEMM/data/figure/{M}_{N}_{K}.dot")
-    s[C].pragma(pragma_axis, "import_llvm", gemm_MxNxK_impl(
-        cfg["tile_x"].size[-1],
-        cfg["tile_y"].size[-1],
-        cfg["tile_k"].size[-1],
-        lda,
-        ldb,
-        ldc,
-        cfg["pipeline_strategy_level_knob"].val,
-        cfg["unroll_k_knob"].val,
-        cfg["nr_main_knob"].val,
-        cfg["MRSA_FLAG"].val,
-        uniq_id
-    ))
+    if N > 2:
+    # if False:
+        # Inner kernel implementation for the tensorization.
+        micro_kernel, uniq_id = intrin_gemm_MxNxK(
+            cfg["tile_x"].size[-1],
+            cfg["tile_y"].size[-1],
+            cfg["tile_k"].size[-1],
+            lda,
+            ldb,
+            ldc,
+        )
+        s[C].tensorize(yi, micro_kernel)
+        # graph = tedd.viz_dataflow_graph(s, show_svg=True, dot_file_path=f"/home/linzuxuan/autoGEMM/autoGEMM/data/figure/{M}_{N}_{K}.dot")
+        s[C].pragma(pragma_axis, "import_llvm", gemm_MxNxK_impl(
+            cfg["tile_x"].size[-1],
+            cfg["tile_y"].size[-1],
+            cfg["tile_k"].size[-1],
+            lda,
+            ldb,
+            ldc,
+            cfg["pipeline_strategy_level_knob"].val,
+            cfg["unroll_k_knob"].val,
+            cfg["nr_main_knob"].val,
+            cfg["MRSA_FLAG"].val,
+            uniq_id
+        ))
 
     cfg.add_flop(2 * M * N * K) 
 
