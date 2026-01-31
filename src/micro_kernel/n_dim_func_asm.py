@@ -4,35 +4,43 @@ from compile_time_for_init_func_asm import compile_time_for_init_func_asm
 from compile_time_for_loop_k_end_func_asm import compile_time_for_loop_k_end_func_asm
 from compile_time_for_n_dim_micro_kernel_pipeline_func_asm import compile_time_for_n_dim_micro_kernel_pipeline_func_asm
 
-def get_vec_reg_C_len(
-    MR_MAIN,
-    NR
-):
-    return MR_MAIN * NR
+class RegisterManager:
+    
+    def __init__(self, K, MR_MAIN, NR, pipeline_strategy_level):
+        self.K = K
+        self.MR_MAIN = MR_MAIN
+        self.NR = NR
+        self.pipeline_strategy_level = pipeline_strategy_level
+        self._MIN_N_REGISTER = 4
+        self._MIN_N_UNROLL_REGISTER = 8
+        self._NR_UNROLL_SIGN = 6
+        # default value (ideal situation)
+        self.VEC_REG_A_LEN = self.MR_MAIN
+        self.VEC_REG_B_LEN = self.NR
 
-def get_vec_reg_B_len(
-    NR,
-    K
-):
-    VEC_REG_B_LEN = NR if K <= 16 else max(4, NR) # 确定B矩阵所需的向量寄存器的数量
-    if NR == 6:
-        VEC_REG_B_LEN = NR if K <= 32 else 8
-    logger.debug(f"VEC_REG_B_LEN: {VEC_REG_B_LEN} (正常情况下就是NR={NR}, K过大或者NR有特殊值时有特殊设置)")
-    return VEC_REG_B_LEN
+    def get_vec_reg_B_len(self):
+        # if self.K > SIMD_LANE * self._MIN_N_REGISTER:
+        #     self.VEC_REG_B_LEN = max(self._MIN_N_REGISTER, self.NR)
+        # if self.NR == self._NR_UNROLL_SIGN:
+        #     if self.K > SIMD_LANE * self._MIN_N_UNROLL_REGISTER:
+        #         self.VEC_REG_B_LEN = self._MIN_N_UNROLL_REGISTER
 
-def get_vec_reg_A_len(
-    MR_MAIN,
-    K,
-    VEC_REG_B_LEN,
-    VEC_REG_C_LEN,
-    pipeline_strategy_level
-):
-    VEC_REG_A_LEN = MR_MAIN
-    if pipeline_strategy_level >= 1:
-        REMAIN_REG_FOR_A = SIMD_REG_NUM - VEC_REG_C_LEN - VEC_REG_B_LEN
-        VEC_REG_A_LEN = MR_MAIN if K <= 16 else min(REMAIN_REG_FOR_A, 2 * MR_MAIN)
-    logger.debug(f"VEC_REG_A_LEN: {VEC_REG_A_LEN} (正常情况下就是MR_MAIN={MR_MAIN}， K过大时有特殊设置)")
-    return VEC_REG_A_LEN
+        logger.debug(f"VEC_REG_B_LEN: {self.VEC_REG_B_LEN}")
+        return self.VEC_REG_B_LEN
+
+    def get_vec_reg_C_len(self):
+        self.VEC_REG_C_LEN = self.VEC_REG_A_LEN * self.VEC_REG_B_LEN
+        logger.debug(f"VEC_REG_C_LEN: {self.VEC_REG_C_LEN}")
+        return self.VEC_REG_C_LEN
+
+    def get_vec_reg_A_len(self):
+        # REMAIN_REG_FOR_A = SIMD_REG_NUM - self.VEC_REG_C_LEN - self.VEC_REG_B_LEN
+        # if self.pipeline_strategy_level >= 1:
+        #     if self.K > SIMD_LANE * self._MIN_N_REGISTER:
+        #         self.VEC_REG_A_LEN = min(REMAIN_REG_FOR_A, 2 * self.MR_MAIN)
+
+        logger.debug(f"VEC_REG_A_LEN: {self.VEC_REG_A_LEN}")
+        return self.VEC_REG_A_LEN
 
 def get_vector_id_array_A(VEC_REG_C_LEN, VEC_REG_B_LEN, VEC_REG_A_LEN):
     vector_id_array_A = [i for i in range(VEC_REG_C_LEN + VEC_REG_B_LEN, VEC_REG_C_LEN + VEC_REG_B_LEN + VEC_REG_A_LEN)]
@@ -65,9 +73,12 @@ def n_dim_func_asm(
     logger.debug(f"进入N方向的函数生成...")
     logger.debug(f"MR_MAIN: {MR_MAIN}")
     logger.debug(f"NR: {NR}")
-    VEC_REG_B_LEN = get_vec_reg_B_len(NR, K)
-    VEC_REG_C_LEN = get_vec_reg_C_len(MR_MAIN, NR)
-    VEC_REG_A_LEN = get_vec_reg_A_len(MR_MAIN, K, VEC_REG_B_LEN, VEC_REG_C_LEN, pipeline_strategy_level)
+    register_manager = RegisterManager(K, MR_MAIN, NR, pipeline_strategy_level)
+    VEC_REG_B_LEN = register_manager.get_vec_reg_B_len()
+    VEC_REG_C_LEN = register_manager.get_vec_reg_C_len()
+    VEC_REG_A_LEN = register_manager.get_vec_reg_A_len()
+    assert VEC_REG_A_LEN + VEC_REG_B_LEN + VEC_REG_C_LEN <= SIMD_REG_NUM
+    assert VEC_REG_A_LEN <= 8 # fmla constraint
 
     vector_id_array_A = get_vector_id_array_A(VEC_REG_C_LEN, VEC_REG_B_LEN, VEC_REG_A_LEN)
     vector_id_array_B = get_vector_id_array_B(VEC_REG_C_LEN, VEC_REG_B_LEN, VEC_REG_A_LEN)
