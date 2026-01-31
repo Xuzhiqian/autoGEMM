@@ -27,4 +27,5 @@ sh test_regular.sh   2  4  8   8        4
 sh test_regular.sh   3  8  16  8        4
 sh test_regular.sh   4  12 32  8        4
 sh test_regular.sh   5  16 64  8        4
-sh test_regular.sh   6  20 128  8        4
+sh test_regular.sh   6  20 128 8        4
+sh test_regular.sh   16 16 128 8        4

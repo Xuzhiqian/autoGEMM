@@ -143,3 +143,5 @@ MNK.txt
 .vscode
 generated_micro_kernel/
 *.tar.gz
+tmp/
+test/micro_kernel_tester/Makefile
