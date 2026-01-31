@@ -6,7 +6,7 @@ if PRECISION == "FLOAT":
 if PRECISION == "FP16":
     PRECISION_MACRO = "FP16"
 
-def makefile_generator():
+def generate_makefile():
     code_str = ""
     code_str += f"CXX = g++\n"
     if SIMD == "NEON":

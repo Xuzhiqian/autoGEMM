@@ -101,7 +101,7 @@ def intrin_gemm_MxNxK(M, N, K, lda, ldb, ldc):
     return intrin_decl, uniq_id
 
 
-def gemm_MxNxK_impl(M, N, K, lda, ldb, ldc, pipeline_strategy_level, unroll_k, nr_main, MRSA_FLAG, uniq_id):
+def generate_micro_kernel_llvm_ir(M, N, K, lda, ldb, ldc, pipeline_strategy_level, unroll_k, nr_main, MRSA_FLAG, uniq_id):
     from gen_xsmm_asm_armv8_code import xsmm_asm_armv8_code
 
     # Create c source code
@@ -110,7 +110,6 @@ def gemm_MxNxK_impl(M, N, K, lda, ldb, ldc, pipeline_strategy_level, unroll_k, n
     
     temp = utils.tempdir()
     ll_path = temp.relpath("temp.ll")
-    # ll_path = "temp.ll"
     # Create LLVM ir from c source code
     ll_code = clang.create_llvm(cc_code, output=ll_path, options=["-march=armv8.3-a+sve", "-O3", "-std=c++14"], cc=cc_compiler)
     return ll_code

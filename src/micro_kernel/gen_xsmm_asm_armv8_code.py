@@ -25,13 +25,13 @@ void small_gemm_with_bias(const float *A, const float *B, float *C, int lda, int
 }}
 
 extern "C" int gemm_{M}x{N}x{K}_{lda}_{ldb}_{ldc}_xsmm_{uniq_id}(const float *A, const float *B, float *C, int lda, int ldb, int ldc){{
-  laf::small_gemm(A, B, C, lda, ldb, ldc);
-  return 0;
+    laf::small_gemm(A, B, C, lda, ldb, ldc);
+    return 0;
 }}
 
 extern "C" int gemm_{M}x{N}x{K}_{lda}_{ldb}_{ldc}_xsmm_with_bias_{uniq_id}(const float *A, const float *B, float *C, int lda, int ldb, int ldc){{
-  laf::small_gemm_with_bias(A, B, C, lda, ldb, ldc);
-  return 0;
+    laf::small_gemm_with_bias(A, B, C, lda, ldb, ldc);
+    return 0;
 }}
  
 """
@@ -40,6 +40,6 @@ extern "C" int gemm_{M}x{N}x{K}_{lda}_{ldb}_{ldc}_xsmm_with_bias_{uniq_id}(const
     generated_micro_kernel_path = os.path.join(current_directory, f'../../data/tune_output/build/generated_micro_kernel')
     generated_micro_kernel_file_path = os.path.join(generated_micro_kernel_path, f'c_file_asm_{M}_{K}_{N}_{lda}_{ldb}_{ldc}_{uniq_id}.cpp')
     with open(generated_micro_kernel_file_path, 'w') as f:
-      f.write(cc_code)
+        f.write(cc_code)
 
     return cc_code

@@ -5,7 +5,7 @@ from tvm import te
 from tvm import tir
 from tvm import autotvm
 from tvm.autotvm.task import ConfigEntity
-from template.tvm_extern_asm_micro_kernel import intrin_gemm_MxNxK, gemm_MxNxK_impl
+from template.tvm_extern_asm_micro_kernel import intrin_gemm_MxNxK, generate_micro_kernel_llvm_ir
 from tvm.script import tir as T
 
 from tvm.contrib import tedd
@@ -200,8 +200,9 @@ def matmul(M, N, K, parallel):
         ldb = bn_ceil
         ldc = N
 
-    if N > 2:
-    # if False:
+    # if N > 2:
+    # if False: # enable to check if error is in  the micro-kernel
+    if True: # enbale to debug all scenerio
         # Inner kernel implementation for the tensorization.
         micro_kernel, uniq_id = intrin_gemm_MxNxK(
             cfg["tile_x"].size[-1],
@@ -213,7 +214,7 @@ def matmul(M, N, K, parallel):
         )
         s[C].tensorize(yi, micro_kernel)
         # graph = tedd.viz_dataflow_graph(s, show_svg=True, dot_file_path=f"/home/linzuxuan/autoGEMM/autoGEMM/data/figure/{M}_{N}_{K}.dot")
-        s[C].pragma(pragma_axis, "import_llvm", gemm_MxNxK_impl(
+        s[C].pragma(pragma_axis, "import_llvm", generate_micro_kernel_llvm_ir(
             cfg["tile_x"].size[-1],
             cfg["tile_y"].size[-1],
             cfg["tile_k"].size[-1],
