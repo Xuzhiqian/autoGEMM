@@ -2,23 +2,65 @@ from global_config import *
 from block_param import RBSA
 from n_dim_func_asm import n_dim_func_asm
 
-def laf_asm_code(M, N, K, lda, ldb, ldc, pipeline_strategy_level, UNROLL_K = 8, NR_MAIN = 4, MRSA_FLAG = 0, with_bias = 0):
+
+def laf_asm_code(M: int, N: int, K: int, lda: int, ldb: int, ldc: int, pipeline_strategy_level: int=0, UNROLL_K: int=8, NR_MAIN: int=4, MRSA_FLAG: int=0, with_bias: int=0) -> str:
+    """The core generator interface of autoGEMM
+
+    Args:
+        M (int): M
+        N (int): N
+        K (int): K
+        lda (int): lda
+        ldb (int): ldb
+        ldc (int): ldc
+        pipeline_strategy_level (int, optional): micro-kernel pipeline strategy optimization level
+        UNROLL_K (int, optional): unrolling size on K direction. Defaults to 8.
+        NR_MAIN (int, optional): register number used on N direction. Defaults to 4.
+        MRSA_FLAG (int, optional): enable m direction dynamic tiling. Defaults to 0.
+        with_bias (int, optional): if 0, then C = AB, else C = AB + C. Defaults to 0.
+
+    Returns:
+        code_str (str): generated micro-kernel. An empty string will be returned if any error occurs, otherwise it should be a completed micro-kernel.
+
+    """    
+
     # UNROLL_K是有默认值8的，刚好就是SIMD_LANE * 2
     # NR_MAIN默认值是4，初步认为其含义是N方向的一个块的长度需要多少个SIMD寄存器，例如这里4的话，说明N方向的大小是128*4bits
     # with_bias含义比较明显，就是考虑beta不等于0
+    code_str = "" # 主要的拼接逻辑，拼接出来的kernel就是解决整个大的输入的M，N，K的small_gemm接口
+
     logger.debug(f"UNROLL_K: {UNROLL_K}")
     logger.debug(f"UNROLL_LANE: {UNROLL_LANE}")
-    assert (UNROLL_K % (2 * UNROLL_LANE) == 0) # UNROLL_K必须是2倍UNROLL_LANE的整数倍
-    assert (UNROLL_K >= 4)
-    assert (NR_MAIN == 3 or NR_MAIN == 4 or NR_MAIN == 5) # NR_MAIN限定是3、4、5中的值
+    if UNROLL_K % (2 * UNROLL_LANE) != 0: # UNROLL_K必须是2倍UNROLL_LANE的整数倍
+        logger.error(f"UNROLL_K should be times of {2 * UNROLL_LANE}!")
+        return code_str
+    if UNROLL_K < 4:
+        logger.error(f"UNROLL_K should not be smaller than 4!")
+        return code_str
+    logger.debug(f"NR_MAIN: {NR_MAIN}")
+    if NR_MAIN not in {3, 4, 5}: # NR_MAIN限定是3、4、5中的值
+        logger.error(f"NR_MAIN should be 3 or 4 or 5, not {NR_MAIN}!")
+        return code_str
 
-    logger.debug(f"M: {M}, N: {N}, K: {K}")
-    logger.debug(f"UNROLL_K: {UNROLL_K}, NR_MAIN: {NR_MAIN}, MRSA_FLAG: {MRSA_FLAG}, with_bias: {with_bias}")
+    logger.debug(f"M: {M}, N: {N}, K: {K}, lda: {lda}, ldb: {ldb}, ldc: {ldc}")
+    if lda < K:
+        logger.error(f"lda should not be smaller than K!")
+        return code_str
+    if ldb < N:
+        logger.error(f"ldb should not be smaller than N!")
+        return code_str
+    if ldc < N:
+        logger.error(f"ldc should not be smaller than N!")
+        return code_str
+    
+    logger.debug(f"MRSA_FLAG: {MRSA_FLAG}, with_bias: {with_bias}")
+    if MRSA_FLAG not in {0, 1}:
+        logger.error(f"MRSA_FLAG should be 0 or 1, not {MRSA_FLAG}!")
+        return code_str
+
     logger.debug(f"调用RBSA进行分块参数的计算...")
     NR_MAIN_LOOPS, NR_REMAIN, NR_REMAIN_LOOPS, NR_MAIN_MR_MAIN, NR_MAIN_MR_MAIN_LOOPS, NR_MAIN_MR_REMAIN, NR_MAIN_MR_REMAIN_LOOPS, NR_REMAIN_MR_MAIN, NR_REMAIN_MR_MAIN_LOOPS, NR_REMAIN_MR_REMAIN, NR_REMAIN_MR_REMAIN_LOOPS = RBSA(M, N, NR_MAIN, MRSA_FLAG) # 拆解出各个小块参数的逻辑（参见论文中的Fig5的d图）
     logger.debug(f"调用RBSA进行分块参数的计算...完毕")
-
-    code_str = "" # 主要的拼接逻辑，拼接出来的kernel就是解决整个大的输入的M，N，K的small_gemm接口
 
     logger.debug(f"NR_MAIN_LOOPS: {NR_MAIN_LOOPS} (N方向是否要进行主循环)")
     logger.debug(f"NR_REMAIN: {NR_REMAIN} (N方向剩余的块数)")

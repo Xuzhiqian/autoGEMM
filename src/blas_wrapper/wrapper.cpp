@@ -41,9 +41,9 @@ void autogemm_sgemm(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE tra
         return;
     }
 
-    int M = m;
-    int N = n;
-    int K = k;
+    int M = int(m);
+    int N = int(n);
+    int K = int(k);
 
     // printf("MxNxK = %dx%dx%d\n", m, n, k);
 
