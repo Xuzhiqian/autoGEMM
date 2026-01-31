@@ -1,6 +1,6 @@
 import os
 from tvm import autotvm
-from utils_func.ncopy_runner import NCOPYLocalRunner
+from utils.ncopy_runner import NCOPYLocalRunner
 
 cc_compiler = os.environ["TVM_CC"]
 

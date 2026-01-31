@@ -92,3 +92,7 @@ import time
 import os
 logger.remove()
 logger.add(os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../data/log/{time.strftime("%Y%m%d", time.localtime())}/{time.strftime("%Y%m%d%H", time.localtime())}.log'))
+
+BUILD_TARGET="llvm -mtriple=aarch64-linux-gnu -mattr=+neon"
+if SIMD == "SVE":
+    BUILD_TARGET="llvm -mtriple=aarch64-linux-gnu -mattr=+sve,+sve2"

@@ -17,18 +17,12 @@ def tune(
     N,
     K,
     record_file,
+    best_record_file,
     parallel, 
     n_trial=2500,
     early_stopping=1000,
     target="llvm",
 ):
-    best_record = record_file
-    record_file += ".tmp"
-    if os.path.exists(best_record):
-        os.remove(best_record)
-    if os.path.exists(record_file):
-        os.remove(record_file)
-
     task = autotvm.task.create(
         "matmul", args=[M, N, K, parallel], target=target
     )
@@ -47,5 +41,3 @@ def tune(
             autotvm.callback.log_to_file(record_file),
         ],
     )
-
-    autotvm.record.pick_best(record_file, best_record)
