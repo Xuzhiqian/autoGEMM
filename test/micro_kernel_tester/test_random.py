@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess as sp
 import random
+import csv
 
 # create test_path
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +16,8 @@ sys.path.insert(0, src_path)
 from global_config import UNROLL_LANE
 
 times = 100
+
+res = []
 
 for i in range(times):
     M = random.randint(1, 1024)
@@ -33,8 +36,21 @@ for i in range(times):
     p = sp.Popen(args, stdout=sp.PIPE, text=True, shell=True)
     p.wait()
     print(f"{i}: {args}")
-    print(p.stdout.read())
+    s = p.stdout.read()
+    print(s)
     print(p.returncode)
+    res.append({
+        "M":M,
+        "N":N,
+        "K":K,
+        "dtype":"fp32",
+        "perf":float(s.split("GFLOPS:")[-1])
+    })
     if p.returncode: # normal value is 0
         print("returncode error!")
-    print()
+    
+with open('random_res.csv', 'w', newline='', encoding='utf-8') as f:
+    dict_writer = csv.DictWriter(f, fieldnames=res[0].keys())
+    
+    dict_writer.writeheader()  # 写入表头
+    dict_writer.writerows(res) # 一次性写入所有行
